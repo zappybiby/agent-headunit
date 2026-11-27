@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { gestureTimeline } from "./gesture-timeline.mjs";
+import { gestureTimeline } from "../provider/gesture-timeline.mjs";
 
 const pause = (duration = 0) => ({ type: "pause", duration });
 const move = (x, y = 20) => ({ type: "pointerMove", duration: 0, x, y });

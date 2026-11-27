@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { projectionDeviceFacts, projectionInventory, webDriverDevice } from './projection-device.mjs';
+import { projectionDeviceFacts, projectionInventory, webDriverDevice } from '../provider/projection-device.mjs';
 
 const androidDevice = Object.freeze({ platform: 'android', target: 'mobile', kind: 'device', booted: true });
 

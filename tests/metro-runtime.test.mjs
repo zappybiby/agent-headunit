@@ -3,8 +3,8 @@ import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { metroPorts } from "./metro-runtime.mjs";
-import { projectedMetroOperations } from "./projected-metro.mjs";
+import { metroPorts } from "../provider/metro-runtime.mjs";
+import { projectedMetroOperations } from "../provider/projected-metro.mjs";
 
 const serial = "emulator-5554";
 const input = { provider: "headunit", leaseId: "old", devicePort: 8081, hostPort: 8082, name: "metro" };

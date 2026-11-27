@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bindPhonePush } from "./phone-push.mjs";
+import { bindPhonePush } from "../provider/phone-push.mjs";
 
 test("push preserves stock delivery and refuses a receiver in another phone app", async () => {
   const dispatched = [];

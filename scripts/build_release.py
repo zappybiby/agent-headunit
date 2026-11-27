@@ -1,11 +1,11 @@
 """Build both npm packages and the Windows release from a patched Agent Device checkout."""
 
 import argparse
+import base64
 import hashlib
 import json
 import os
 from pathlib import Path
-import base64
 import shutil
 import subprocess
 import sys
@@ -137,7 +137,7 @@ def package(checkout, output):
         bundle = stage / "agent-headunit-windows-x64.zip"
         with ZipFile(bundle, "w", ZIP_DEFLATED) as release:
             for path in (stage / provider, stage / cli, PROJECT / "windows/setup.py",
-                         PROJECT / "windows/agent-headunit.cmd", PROJECT / "README.md"):
+                         PROJECT / "windows/agent-headunit.cmd", PROJECT / "README.md", PROJECT / "LICENSE"):
                 release.write(path, path.name)
         for artifact in (stage / provider, stage / cli, bundle):
             artifact.replace(output / artifact.name)

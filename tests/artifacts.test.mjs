@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-const script = fileURLToPath(new URL("./cli/artifacts.mjs", import.meta.url));
+const script = fileURLToPath(new URL("../provider/cli/artifacts.mjs", import.meta.url));
 
 function run(args, env = {}) {
   return new Promise((resolve, reject) => {

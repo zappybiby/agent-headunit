@@ -39,7 +39,7 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           python -B -m unittest discover
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          node --test "provider/*.test.mjs"
+          node --test "tests/*.test.mjs"
       - name: Build the compatible Agent Device CLI
         working-directory: build/agent-device
         shell: bash
@@ -53,7 +53,7 @@ jobs:
         run: |
           & "$env:ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager.bat" "platforms;android-36" "build-tools;36.0.0"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          python -B scripts/pack_compat.py build/agent-device dist
+          python -B scripts/build_release.py build/agent-device dist
       - name: Install and check the release
         run: |
           Expand-Archive dist/agent-headunit-windows-x64.zip build/smoke

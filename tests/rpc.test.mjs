@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { rpcClient, sessionRpcClient } from "./rpc.mjs";
+import { rpcClient, sessionRpcClient } from "../provider/rpc.mjs";
 
 test("acknowledges a completed command while a helper still holds its pipes", async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "headunit-rpc-"));

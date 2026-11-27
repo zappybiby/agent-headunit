@@ -28,7 +28,7 @@ Frida reads Android’s accessibility nodes from the processes that draw the car
    .\rootAVD.bat system-images\android-36\google_apis_playstore\x86_64\ramdisk.img FAKEBOOTIMG
    ```
 
-   Follow the Magisk prompts. **Cold Boot** the phone from Device Manager, run `adb shell su -c "id -u"`, and grant **Shell** root access. The command should print `0`.
+   Follow the Magisk prompts. **Cold Boot** the phone from Device Manager, run `adb shell "su -c 'id -u'"`, and grant **Shell** root access. The command should print `0`.
 
 4. On the phone, sign in to Google Play and install or update Android Auto. Search Settings for **Android Auto**, expand **Version**, and tap **Version and permission info** ten times. Confirm developer mode and select **⋮ → Start head unit server**. Repeat that last step after a phone reboot.
 

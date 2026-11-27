@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { directRuntime, projectionId } from "./provider-runtime.mjs";
+import { directRuntime, projectionId } from "../provider/provider-runtime.mjs";
 
 test("timed gesture capabilities follow the selected projection's staged touch helper", async () => {
   const device = { id: projectionId("emulator-5554", "emulator-5556"), platform: "android", target: "mobile", kind: "emulator" };

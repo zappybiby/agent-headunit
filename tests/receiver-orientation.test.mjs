@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bindReceiverOrientationOperations } from "./receiver-orientation.mjs";
+import { bindReceiverOrientationOperations } from "../provider/receiver-orientation.mjs";
 
 const projection = "com.andrerinas.headunitrevived/com.andrerinas.openheadunit.aap.AapProjectionActivity";
 const home = "com.android.launcher3/.Launcher";

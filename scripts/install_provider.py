@@ -15,31 +15,22 @@ import uuid
 INSTALLER = Path(__file__).resolve()
 PACKAGED = (INSTALLER.parent / "package.json").is_file()
 SOURCE = INSTALLER.parent if PACKAGED else INSTALLER.parents[1]
-JAVASCRIPT = (
-    "package.json", "index.mjs", "driver.mjs", "gesture-timeline.mjs", "projected-touch.mjs", "rpc.mjs",
-    "provider-runtime.mjs", "projection-device.mjs", "upstream-runtime.mjs", "phone-runtime.mjs", "phone-push.mjs", "app-resource-runtime.mjs",
-    "metro-runtime.mjs", "projected-metro.mjs", "pair-claim.mjs", "pair-lifecycle.mjs", "windows-app-log.mjs", "receiver-audio.mjs",
-    "emulator-audio-capture.mjs", "emulator-audio-transport.mjs",
-    "cli/artifacts.mjs", "cli/contact-sheet.mjs", "cli/install.mjs", "cli/session.mjs", "http-auth.mjs", "managed-projection.mjs",
-    "configured-pair.mjs", "projected-snapshot.mjs", "projected-scroll.mjs", "receiver-orientation.mjs", "receiver-volume.mjs",
-)
-BACKEND = (
-    "accessibility.py", "agent_rpc.py", "avd_pair.py", "contact_sheet.py", "gesture_surface.py", "headunit.py",
-    "launcher.py", "mirror.py", "native_nodes.py", "open_headunit_session.py", "projection.py", "projected_alert.py",
-    "projected_lifecycle.py", "projected_service_links.py", "renderer.py", "requirements.txt", "transport.py",
-    "window_tree.py", "start-server.yaml", "frida/projected-tree.js", "frida/component-labels.js", "frida/projected-service-links.js",
-    "frida/projected-maps-links.js", "frida/projected-androidx-links.js",
-)
 
 
 def package_files():
     provider = SOURCE if PACKAGED else SOURCE / "provider"
     backend = SOURCE / "backend"
     files = {
-        **{name: (provider / name).read_bytes() for name in JAVASCRIPT},
+        "package.json": (provider / "package.json").read_bytes(),
+        "LICENSE": (SOURCE / "LICENSE").read_bytes(),
         "install_provider.py": INSTALLER.read_bytes(),
-        **{"backend/" + name: (backend / name).read_bytes() for name in BACKEND},
     }
+    for pattern in ("*.mjs", "cli/*.mjs"):
+        for path in sorted(provider.glob(pattern)):
+            files[path.relative_to(provider).as_posix()] = path.read_bytes()
+    for pattern in ("*.py", "frida/*.js", "requirements.txt", "start-server.yaml"):
+        for path in sorted(backend.glob(pattern)):
+            files["backend/" + path.relative_to(backend).as_posix()] = path.read_bytes()
     touch_jar = "android/projected-touch.jar"
     if PACKAGED:
         files["backend/" + touch_jar] = (backend / touch_jar).read_bytes()

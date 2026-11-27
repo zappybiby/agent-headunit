@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bindProjectedScroll } from "./projected-scroll.mjs";
-import { startDriver } from "./driver.mjs";
+import { bindProjectedScroll } from "../provider/projected-scroll.mjs";
+import { startDriver } from "../provider/driver.mjs";
 
 const viewport = { x: 0, y: 0, width: 800, height: 480 };
 const vertical = { display: 1, enabled: true, scrollAxis: "vertical", carScrollBounds: [10, 25, 490, 400] };

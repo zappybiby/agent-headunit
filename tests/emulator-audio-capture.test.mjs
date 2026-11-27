@@ -5,7 +5,7 @@ import { createServer } from 'node:http2';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { createEmulatorAudioCaptureOperations } from './emulator-audio-capture.mjs';
+import { createEmulatorAudioCaptureOperations } from '../provider/emulator-audio-capture.mjs';
 
 const serial = 'emulator-5556';
 const avdName = 'test-receiver';

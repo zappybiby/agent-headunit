@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bindReceiverAudioOperations, receiverAudioFacts } from "./receiver-audio.mjs";
+import { bindReceiverAudioOperations, receiverAudioFacts } from "../provider/receiver-audio.mjs";
 
 test("starts Windows audio only after rechecking the receiver and recovers only its own probe", async () => {
   const projection = { id: "pair", family: "android", kind: "emulator", target: "mobile" };

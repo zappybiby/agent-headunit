@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pageSource, singleGesture, startDriver } from "./driver.mjs";
-import { bindProjectedSnapshot } from "./projected-snapshot.mjs";
-import { projectedTouchCommand, projectedTouchHelper } from "./projected-touch.mjs";
+import { pageSource, singleGesture, startDriver } from "../provider/driver.mjs";
+import { bindProjectedSnapshot } from "../provider/projected-snapshot.mjs";
+import { projectedTouchCommand, projectedTouchHelper } from "../provider/projected-touch.mjs";
 
 const scene = {
   serial: "phone", viewport: { x: 0, y: 0, width: 800, height: 480 },

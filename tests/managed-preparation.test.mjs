@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { managedPreparation } from "./index.mjs";
+import { managedPreparation } from "../provider/index.mjs";
 
 const host = { createError: (code, message) => Object.assign(new Error(message), { code }) };
 

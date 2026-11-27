@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { bindReceiverVolumeOperations, receiverVolumeFacts } from "./receiver-volume.mjs";
+import { bindReceiverVolumeOperations, receiverVolumeFacts } from "../provider/receiver-volume.mjs";
 
 test("receiver volume operations fail closed when the receiver cannot handle them", async () => {
   const yes = { available: true };

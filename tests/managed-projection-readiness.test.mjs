@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { startManagedProjection } from "./managed-projection.mjs";
+import { startManagedProjection } from "../provider/managed-projection.mjs";
 
 test("managed startup reports Python and Frida prerequisites and reads the final stderr diagnostic", async (t) => {
   const temp = path.resolve(tmpdir());
@@ -38,7 +38,7 @@ test("managed startup reports Python and Frida prerequisites and reads the final
     return true;
   });
 
-  const entry = fileURLToPath(new URL("./cli/install.mjs", import.meta.url));
+  const entry = fileURLToPath(new URL("../provider/cli/install.mjs", import.meta.url));
   const install = spawnSync(process.execPath, [entry, "--help"], {
     env: { ...process.env, HEADUNIT_PYTHON: missingPython },
     encoding: "utf8",

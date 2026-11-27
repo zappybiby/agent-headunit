@@ -4,8 +4,8 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { ManagedProjectionCleanupError, startManagedProjection } from "./managed-projection.mjs";
-import { createPairLifecycle } from "./pair-lifecycle.mjs";
+import { ManagedProjectionCleanupError, startManagedProjection } from "../provider/managed-projection.mjs";
+import { createPairLifecycle } from "../provider/pair-lifecycle.mjs";
 
 async function consoleFixture(t) {
   const server = createServer();

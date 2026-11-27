@@ -5,7 +5,7 @@ import { createServer } from 'node:http2';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { resolveEmulatorAudioEndpoint, startEmulatorAudioStream } from './emulator-audio-transport.mjs';
+import { resolveEmulatorAudioEndpoint, startEmulatorAudioStream } from '../provider/emulator-audio-transport.mjs';
 
 const serial = 'emulator-5556';
 const avdName = 'aa4721_receiver';

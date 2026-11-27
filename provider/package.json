@@ -1,6 +1,8 @@
 {
   "name": "agent-headunit",
   "version": "0.0.1",
+  "license": "MIT",
+  "repository": "github:zappybiby/agent-headunit",
   "description": "Agent Headunit brings Agent Device’s snapshots, selectors, and controls to the live Android Auto screen in Open Headunit.",
   "type": "module",
   "exports": {
@@ -15,6 +17,5 @@
     "open-headunit-artifacts": "./cli/artifacts.mjs"
   },
   "engines": { "node": ">=22.12" },
-  "scripts": { "test": "node --test" },
-  "files": ["index.mjs", "driver.mjs", "gesture-timeline.mjs", "projected-touch.mjs", "projected-snapshot.mjs", "projected-scroll.mjs", "rpc.mjs", "provider-runtime.mjs", "projection-device.mjs", "upstream-runtime.mjs", "phone-runtime.mjs", "phone-push.mjs", "app-resource-runtime.mjs", "metro-runtime.mjs", "projected-metro.mjs", "configured-pair.mjs", "pair-claim.mjs", "pair-lifecycle.mjs", "windows-app-log.mjs", "receiver-audio.mjs", "emulator-audio-capture.mjs", "emulator-audio-transport.mjs", "receiver-orientation.mjs", "receiver-volume.mjs", "cli", "http-auth.mjs", "managed-projection.mjs", "install_provider.py", "backend"]
+  "files": ["*.mjs", "cli", "install_provider.py", "backend"]
 }

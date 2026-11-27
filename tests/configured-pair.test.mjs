@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { configuredPair } from "./configured-pair.mjs";
+import { configuredPair } from "../provider/configured-pair.mjs";
 
 const config = { phoneAvd: "projecting_phone", receiverAvd: "car_receiver" };
 const phone = { serial: "emulator-5554", transportId: "26", booted: true };
