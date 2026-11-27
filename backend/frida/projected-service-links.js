@@ -1,10 +1,11 @@
-// Gearhead 18.0.664264-release TemplateNavigationService and its existing app connection.
+// Follow the visible template activity to its existing AndroidX car app connection.
 const gearhead = "com.google.android.projection.gearhead";
 const serviceKey = "GH.CarAppServiceKey";
 const appKey = "AppKey";
 const sessionKey = "TemplateCarActivity.SESSION_ID";
 const requestKey = "com.androidlab.headunit.SERVICE_LINK_REQUEST";
-const callbackType = "androidx.car.app.serialization.Bundleable";
+const actionView = "android.intent.action.VIEW";
+const intentType = "android.content.Intent";
 
 function onMain(action) {
   return new Promise((resolve, reject) => {
@@ -15,10 +16,59 @@ function onMain(action) {
   });
 }
 
-function member(type, name) {
-  const field = Java.use(type).class.getDeclaredField(name);
-  field.setAccessible(true);
-  return (value) => field.get(value);
+function field(type, name) {
+  const value = type.class.getDeclaredField(name);
+  value.setAccessible(true);
+  return value;
+}
+
+function concrete(object) {
+  const type = Java.cast(object, Java.use("java.lang.Object")).getClass();
+  return Java.cast(object, Java.use(String(type.getName())));
+}
+
+function accessor(methods, returnType) {
+  const matches = Array.from(methods).filter((method) => method.getParameterTypes().length === 0 &&
+    String(method.getReturnType().getName()) === returnType);
+  if (matches.length !== 1) throw new Error("Android Auto did not expose one accessor returning " + returnType + ".");
+  const method = matches[0];
+  const owner = Java.use(String(method.getDeclaringClass().getName()));
+  return owner[String(method.getName())].overload();
+}
+
+function templateActivity() {
+  const service = Java.use("com.google.android.projection.gearhead.apphost.TemplateNavigationService");
+  const activity = accessor(service.class.getDeclaredMethods(), "java.lang.Class");
+  return Java.use(String(activity.call(service.$new()).getName()));
+}
+
+function currentHost(key, session, activityType) {
+  const loader = activityType.class.getClassLoader();
+  const Map = Java.use("java.util.Map");
+  const Modifier = Java.use("java.lang.reflect.Modifier");
+  const pair = Java.use("android.util.Pair").create(key, session);
+  const matches = [];
+  // The template cache has a singleton getter, an active flag and a map keyed by (app, session).
+  for (const group of Java.enumerateMethods("*!g(): */su")) {
+    if (!group.loader || !group.loader.equals(loader)) continue;
+    const factory = Java.ClassFactory.get(group.loader);
+    for (const entry of group.classes) {
+      if (!entry.methods.includes(`g(): ${entry.name}`)) continue;
+      const type = factory.use(entry.name);
+      const fields = Array.from(type.class.getDeclaredFields());
+      const singleton = fields.find((f) => f.getType().equals(type.class) && Modifier.isStatic(f.getModifiers()));
+      const active = fields.find((f) => String(f.getName()) === "a" && String(f.getType().getName()) === "boolean");
+      const hosts = fields.find((f) => String(f.getName()) === "b" && Map.class.equals(f.getType()));
+      if (!singleton || !active || !hosts) continue;
+      for (const f of [singleton, active, hosts]) f.setAccessible(true);
+      const cache = singleton.get(null);
+      if (!cache || !active.getBoolean(cache)) continue;
+      const host = Java.cast(hosts.get(cache), Map).get(pair);
+      if (host) matches.push(concrete(host));
+    }
+  }
+  if (matches.length !== 1) throw new Error("Android Auto did not expose one active host for this app and car session.");
+  return matches[0];
 }
 
 function templateInstance(component, displays, expected, use) {
@@ -27,70 +77,58 @@ function templateInstance(component, displays, expected, use) {
     throw new Error("The selected process is not Android Auto.");
   }
   const System = Java.use("java.lang.System");
-  const Activity = Java.use("kgp");
-  const Fragment = Java.use("kha");
-  const AppKey = Java.use("nfl");
-  const KeyParser = Java.use("nev");
-  const Host = Java.use("fxw");
-  const AppHost = Java.use("hpk");
-  const ViewOwner = Java.use("kgl");
-  const Map = Java.use("java.util.Map");
-  const Pair = Java.use("android.util.Pair");
-  const Connection = Java.use("grl");
+  const Activity = templateActivity();
+  const currentIntent = accessor(Activity.class.getMethods(), "android.content.Intent");
+  const fragmentField = field(Activity, "r");
+  const Fragment = Java.use(String(fragmentField.getType().getName()));
+  const keyField = field(Fragment, "s");
+  const AppKey = Java.use(String(keyField.getType().getName()));
   const ComponentName = Java.use("android.content.ComponentName");
   const AppProfile = Java.use("java.lang.Enum");
-  const fragmentOf = member("kgp", "r");
-  const boundKeyOf = member("kha", "s");
-  const appComponentOf = member("nfl", "a");
-  const appProfileOf = member("nfl", "b");
-  const currentCache = member("kgi", "d");
-  const cacheActive = member("kgi", "a");
-  const hostsOf = member("kgi", "b");
-  const connectionOf = member("fxw", "b");
-  const connectionComponentOf = member("grl", "c");
-  const connectionStateOf = member("grl", "m");
   return new Promise((resolve, reject) => {
     const candidates = [];
     let failure;
-    Java.choose("kgp", {
+    Java.choose(Activity.$className, {
       onMatch(activity) {
         try {
-          if (String(activity.getClass().getName()) !== "kgp") return;
-          const fragment = Java.cast(fragmentOf(activity), Fragment);
+          if (!activity.getClass().equals(Activity.class)) return;
+          const fragment = Java.cast(fragmentField.get(activity), Fragment);
           const view = fragment.getView();
           const display = view?.getDisplay();
           if (!display || !view.isShown() || !fragment.isResumed() ||
               !displays.includes(display.getDisplayId())) return;
-          const current = activity.q();
+          const current = currentIntent.call(activity);
           if (!current) return;
           const storedKey = current.getStringExtra(serviceKey);
-          const intentKey = storedKey ? KeyParser.c(String(storedKey)) : AppKey.b(current);
-          const bound = boundKeyOf(fragment);
-          if (!intentKey || !bound || !intentKey.equals(bound)) return;
+          const bound = keyField.get(fragment);
+          if (!bound) return;
           const key = Java.cast(bound, AppKey);
-          if (String(Java.cast(appProfileOf(key), AppProfile).name()) !== "PERSONAL" ||
-              String(Java.cast(appComponentOf(key), ComponentName).flattenToString()) !== component) return;
+          const serializedKey = String(key.c());
+          if (storedKey ? String(storedKey) !== serializedKey : !key.equals(AppKey.b(current))) return;
+          if (String(Java.cast(field(AppKey, "b").get(key), AppProfile).name()) !== "PERSONAL" ||
+              String(Java.cast(field(AppKey, "a").get(key), ComponentName).flattenToString()) !== component) return;
           const session = Activity.b.overload().call(activity);
           if (session.getDisplayType() !== 0) return;
-          const cache = currentCache(null);
-          if (!cache || String(cacheActive(cache)) !== "true") return;
-          const hosts = Java.cast(hostsOf(cache), Map);
-          const existingHost = hosts.get(Pair.create(key, session));
-          if (!existingHost) return;
-          const host = Java.cast(existingHost, Host);
-          const appHost = Java.cast(host.a("app"), AppHost);
-          const owner = Java.cast(appHost.r(), ViewOwner);
-          if (!fragment.equals(owner.c())) return;
-          const connection = Java.cast(connectionOf(host), Connection);
-          if (String(Java.cast(connectionComponentOf(connection), ComponentName).flattenToString()) !== component ||
-              Java.cast(connectionStateOf(connection), AppProfile).ordinal() !== 2) return;
+          const host = currentHost(key, session, Activity);
+          const appHost = concrete(host.a("app"));
+          if (!fragment.equals(concrete(appHost.r()).c())) return;
+          const hostType = Java.use(host.$className);
+          const connection = concrete(field(hostType, "b").get(host));
+          const type = Java.use(connection.$className);
+          if (String(Java.cast(field(type, "c").get(connection), ComponentName).flattenToString()) !== component ||
+              Java.cast(field(type, "m").get(connection), AppProfile).ordinal() !== 2) return;
+          const target = field(type, "h").get(connection);
+          const Proxy = Java.use("androidx.car.app.ICarApp$Stub$Proxy");
+          if (!target || !Proxy.class.isInstance(target)) return;
+          const remote = Java.cast(target, Proxy).asBinder();
+          if (!remote.isBinderAlive()) return;
           const match = {
             display: display.getDisplayId(), session: String(session.getSessionId()),
             activity: System.identityHashCode(activity), connection: System.identityHashCode(connection),
           };
           if (expected && Object.keys(match).some((name) => match[name] !== expected[name])) return;
-          candidates.push({ activity: Java.retain(activity), connection: Java.retain(connection),
-            serializedKey: String(key.c()), explicitSession: current.getStringExtra(sessionKey), match });
+          candidates.push({ activity: Java.retain(activity), connection: Java.retain(connection), remote: Java.retain(remote),
+            serializedKey, explicitSession: current.getStringExtra(sessionKey), match });
         } catch (error) {
           failure ??= error;
         }
@@ -107,84 +145,56 @@ function templateInstance(component, displays, expected, use) {
   });
 }
 
+function sameBoundConnection(connection, bindingState, boundApp, remote) {
+  const state = bindingState.get(connection);
+  const target = boundApp.get(connection);
+  const Enum = Java.use("java.lang.Enum");
+  const Proxy = Java.use("androidx.car.app.ICarApp$Stub$Proxy");
+  const Object = Java.use("java.lang.Object");
+  return state && Java.cast(state, Enum).ordinal() === 2 && target && Proxy.class.isInstance(target) &&
+    Java.cast(remote, Object).equals(Java.cast(target, Proxy).asBinder()) && remote.isBinderAlive();
+}
+
+function matchesIntent(intent, component, url, request) {
+  return intent && String(intent.getAction()) === actionView &&
+    String(intent.getComponent()?.flattenToString()) === component && String(intent.getDataString()) === url &&
+    String(intent.getStringExtra(requestKey)) === request;
+}
+
 function deliver(component, candidate, url) {
   const Looper = Java.use("android.os.Looper");
   if (!Looper.getMainLooper().equals(Looper.myLooper())) throw new Error("Android Auto left the main thread.");
-  const Activity = Java.use("kgp");
-  const Intent = Java.use("android.content.Intent");
+  if (typeof url !== "string" || !/^[A-Za-z][A-Za-z0-9+.-]*:[^\s\x00-\x1f\x7f]+$/.test(url)) {
+    return { status: "failed", error: "Specify a valid URI for the projected service." };
+  }
+  const { activity, connection, remote } = candidate;
+  const Activity = Java.use(activity.$className);
+  const Connection = Java.use(connection.$className);
+  const Intent = Java.use(intentType);
   const Uri = Java.use("android.net.Uri");
   const ComponentName = Java.use("android.content.ComponentName");
-  const Completion = Java.use("gra");
-  const Call = Java.use("gqy");
+  const lastIntent = field(Connection, "k");
+  const bindingState = field(Connection, "m");
+  const boundApp = field(Connection, "h");
+  if (!lastIntent.getType().equals(Intent.class) || !sameBoundConnection(connection, bindingState, boundApp, remote)) {
+    return { status: "failed", error: "The selected projected service connection changed." };
+  }
   const request = String(Java.use("java.util.UUID").randomUUID().toString());
-  const connectionOfCall = member("gqy", "a");
-  const intentOfCall = member("gqy", "b");
-  const invoke = Call.a.overload("java.lang.Object", "ikm");
-  const construct = Completion.$init.overload("grl", "gjr", "ikm");
-  const success = Completion.onSuccess.overload(callbackType);
-  const failure = Java.use("gjf").onFailure.overload(callbackType);
-  let callback = null;
-  let matchingCall = false;
-
-  return new Promise((resolve) => {
-    let timer;
-    let finished = false;
-    function finish(status, error) {
-      if (finished) return;
-      finished = true;
-      clearTimeout(timer);
-      invoke.implementation = null;
-      construct.implementation = null;
-      success.implementation = null;
-      failure.implementation = null;
-      resolve({ status, error });
-    }
-    try {
-      invoke.implementation = function (recipient, task) {
-        const raw = intentOfCall(this);
-        const targeted = candidate.connection.equals(connectionOfCall(this)) && raw && Intent.class.isInstance(raw) &&
-          String(Java.cast(raw, Intent).getStringExtra(requestKey)) === request;
-        if (!targeted) return invoke.call(this, recipient, task);
-        matchingCall = true;
-        try { return invoke.call(this, recipient, task); }
-        finally { matchingCall = false; }
-      };
-      construct.implementation = function (connection, context, task) {
-        construct.call(this, connection, context, task);
-        if (matchingCall && candidate.connection.equals(connection)) callback = Java.retain(this);
-      };
-      success.implementation = function (bundle) {
-        const matched = callback && this.equals(callback);
-        try {
-          const result = success.call(this, bundle);
-          if (matched) finish("accepted");
-          return result;
-        } catch (error) {
-          if (matched) finish("failed", "Android Auto did not refresh the template after the link.");
-          throw error;
-        }
-      };
-      failure.implementation = function (bundle) {
-        const matched = callback && this.equals(callback);
-        try { return failure.call(this, bundle); }
-        finally {
-          if (matched) finish("failed", "The projected application rejected the link.");
-        }
-      };
-      const intent = Intent.$new("android.intent.action.VIEW", Uri.parse(url));
-      intent.setComponent(ComponentName.unflattenFromString(component));
-      const put = Intent.putExtra.overload("java.lang.String", "java.lang.String");
-      put.call(intent, appKey, candidate.serializedKey);
-      put.call(intent, serviceKey, candidate.serializedKey);
-      put.call(intent, requestKey, request);
-      if (candidate.explicitSession) put.call(intent, sessionKey, String(candidate.explicitSession));
-      timer = setTimeout(() => Java.perform(() =>
-        finish("failed", "The projected application did not acknowledge the link.")), 8000);
-      Activity.e.overload("android.content.Intent").call(candidate.activity, intent);
-    } catch (error) {
-      finish("failed", "Android Auto could not dispatch the projected link: " + String(error));
-    }
-  });
+  const intent = Intent.$new(actionView, Uri.parse(url));
+  intent.setComponent(ComponentName.unflattenFromString(component));
+  const put = Intent.putExtra.overload("java.lang.String", "java.lang.String");
+  put.call(intent, appKey, candidate.serializedKey);
+  put.call(intent, serviceKey, candidate.serializedKey);
+  put.call(intent, requestKey, request);
+  if (candidate.explicitSession) put.call(intent, sessionKey, String(candidate.explicitSession));
+  Activity.e.overload(intentType).call(activity, intent);
+  // The bound host stores the original intent in k before submitting its onNewIntent call.
+  const recorded = lastIntent.get(connection);
+  const receipt = recorded && Java.cast(recorded, Intent);
+  if (!matchesIntent(receipt, component, url, request) || !sameBoundConnection(connection, bindingState, boundApp, remote)) {
+    return { status: "failed", error: "Android Auto did not confirm submission through the selected template host." };
+  }
+  return { status: "submitted" };
 }
 
 rpc.exports = {
@@ -192,8 +202,12 @@ rpc.exports = {
     return await onMain(() => templateInstance(component, displays, null, (candidate) => candidate?.match ?? null));
   },
   async deliver(component, expected, url) {
-    return await onMain(() => templateInstance(component, [expected.display], expected,
-      (candidate) => candidate ? deliver(component, candidate, url)
-        : { status: "failed", error: "The selected projected car session changed." }));
+    try {
+      return await onMain(() => templateInstance(component, [expected.display], expected,
+        (candidate) => candidate ? deliver(component, candidate, url)
+          : { status: "failed", error: "The selected projected car session changed." }));
+    } catch (error) {
+      return { status: "failed", error: "Android Auto could not confirm submission through the template host: " + String(error) };
+    }
   },
 };

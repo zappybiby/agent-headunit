@@ -62,7 +62,7 @@ Frida reads accessibility nodes from the Android processes that draw the car scr
 
    At the home screen, run `adb -e shell "su -c 'id -u'"`. Grant **Shell** root access and check for `0`.
 
-7. **Enable Android Auto developer mode.** Sign in to Google Play on the phone, install or update **Android Auto**, then open its settings.
+7. **Enable Android Auto developer mode.** On the phone, install Android Auto 18 or later from Google Play, then open its settings.
 
    ```powershell
    adb -e shell am start -a com.google.android.projection.gearhead.SETTINGS
