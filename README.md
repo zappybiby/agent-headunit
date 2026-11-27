@@ -6,42 +6,59 @@ Frida reads accessibility nodes from the Android processes that draw the car scr
 
 ## Windows quick start
 
-From your Android project, use your existing `agent-device` installation. Setup also needs [Python 3.12 for Windows x64](https://www.python.org/downloads/release/python-31210/) with the Python launcher.
-
-```powershell
-npm install -g https://github.com/zappybiby/agent-headunit/releases/download/v0.0.1/agent-headunit-0.0.1.tgz
-agent-headunit setup --phone-avd AA_Phone --receiver-avd AA_Receiver
-```
-
-Use your AVD names. Setup registers the provider and downloads Frida and the Open Headunit APK. If an Agent Device daemon is running, finish its sessions and run `agent-device daemon stop` once to load the provider.
-
-<details>
-<summary>First time? Create the phone and receiver in Android Studio</summary>
-
-1. Install [Android Studio](https://developer.android.com/studio) with the standard SDK. In **Device Manager**, create two Pixel AVDs with Android 16 (API 36) x86_64 images. Use **Google Play** for `AA_Phone` and **Google APIs** for `AA_Receiver`. Start only the phone.
-2. Extract [rootAVD](https://github.com/galihlasahido/rootAVD/archive/96ebe08618249d585fb551e0fcbdd27b361c8bf4.zip). In the folder containing `rootAVD.bat`, run these commands.
+1. **Install the Windows tools.** On a Windows 11 x64 PC, run these commands in PowerShell.
 
    ```powershell
-   $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
-   $env:Path = "$env:ANDROID_HOME\platform-tools;$env:Path"
+   winget install -e --id Google.AndroidStudio
+   winget install -e --id OpenJS.NodeJS.24
+   winget install -e --id Python.Python.3.12
+   ```
+
+2. **Install Agent Device and Agent Headunit.** Open a new PowerShell window and run these commands from any folder.
+
+   ```powershell
+   $package = "$env:TEMP\agent-headunit-0.0.1.tgz"
+   curl.exe -fL https://github.com/zappybiby/agent-headunit/releases/download/v0.0.1/agent-headunit-0.0.1.tgz -o $package
+   npm.cmd install -g agent-device@0.21.44 $package
+   agent-headunit.cmd setup
+   ```
+
+   Setup installs Frida on the PC and downloads the matching Android server and Open Headunit APK. The provider starts Frida on the phone automatically.
+
+3. **Create two emulators.** Open Android Studio, finish the **Standard** setup wizard, then choose **More Actions → Virtual Device Manager** on the welcome screen. Create two Pixel virtual devices with these exact names. Download the images when prompted.
+
+   | Device name | Android 16 (API 36) x86_64 image |
+   | --- | --- |
+   | `AA_Phone` | Google Play |
+   | `AA_Receiver` | Google APIs |
+
+   If Android Studio requests hardware acceleration, enable [Windows Hypervisor Platform](https://developer.android.com/studio/run/emulator-acceleration#vm-windows) and restart Windows. Start only `AA_Phone` and wait for its home screen.
+
+4. **Root the phone.** Download and extract [rootAVD](https://github.com/galihlasahido/rootAVD/archive/96ebe08618249d585fb551e0fcbdd27b361c8bf4.zip). Open PowerShell in the folder containing `rootAVD.bat`.
+
+   ```powershell
+   $env:Path = "$env:LOCALAPPDATA\Android\Sdk\platform-tools;$env:Path"
    Copy-Item .\Magisk30.zip .\Magisk.zip -Force
    .\rootAVD.bat system-images\android-36\google_apis_playstore\x86_64\ramdisk.img FAKEBOOTIMG
    ```
 
-3. Follow the Magisk prompts, then **Cold Boot** the phone from Device Manager. Run `adb shell "su -c 'id -u'"` and grant **Shell** root access. Look for `0`.
-4. On the phone, sign in to Google Play and install or update Android Auto. Search Settings for **Android Auto**, expand **Version**, and tap **Version and permission info** ten times. Enable developer mode.
-5. Start the receiver. Drag `%LOCALAPPDATA%\agent-headunit\open-headunit.apk` from Explorer onto its emulator window. Open the app and select **Headunit Server** as its wireless mode.
+   Follow the Magisk prompts. When the phone shuts down, choose **Cold Boot** for `AA_Phone` in Device Manager. At the home screen, run `adb shell "su -c 'id -u'"` in the same PowerShell window. Grant **Shell** root access on the phone. PowerShell should print `0`.
 
-</details>
+5. **Start Android Auto and install Open Headunit.**
 
-On the phone, open Android Auto settings and select **⋮ → Start head unit server** after each reboot. From your project, connect and accept the phone’s first connection prompts.
+   - **On the phone.** Sign in to Google Play and install or update **Android Auto**. Search Android Settings for **Android Auto**. Tap **Version**, tap **Version and permission info** ten times, then **OK → ⋮ → Start head unit server**. Start the server again after each phone reboot.
+   - **On the receiver.** Start `AA_Receiver`. In File Explorer, open `%LOCALAPPDATA%\agent-headunit` and drag `open-headunit.apk` onto the receiver window. Open the installed app, finish its prompts, and set **Wireless Mode** to **Headunit Server**.
 
-```powershell
-$env:AGENT_DEVICE_SESSION = "car"
-agent-device connect headunit --platform android
-agent-device open com.google.android.projection.gearhead
-agent-device snapshot
-```
+6. **Take a snapshot.** Run these commands in PowerShell. Accept the phone’s connection prompts when `open` runs.
+
+   ```powershell
+   $env:AGENT_DEVICE_SESSION = "car"
+   agent-device.cmd connect headunit --platform android
+   agent-device.cmd open com.google.android.projection.gearhead
+   agent-device.cmd snapshot
+   ```
+
+   The snapshot lists controls from the car screen with refs such as `@e2`.
 
 ## Source
 
