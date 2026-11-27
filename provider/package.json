@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "license": "MIT",
   "repository": "github:zappybiby/agent-headunit",
-  "description": "Agent Headunit brings Agent Device’s snapshots, selectors, and controls to the live Android Auto screen in Open Headunit.",
+  "description": "agent-headunit brings agent-device’s snapshots, selectors, and controls to the live Android Auto screen in Open Headunit.",
   "type": "module",
   "exports": {
     ".": "./index.mjs",

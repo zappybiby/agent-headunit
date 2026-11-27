@@ -36,5 +36,5 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/agent-headunit-*.tgz --clobber
           else
-            gh release create "$TAG" dist/agent-headunit-*.tgz --verify-tag --title "$TAG" --notes "Install the provider alongside Agent Device. See the Windows quick start in the README."
+            gh release create "$TAG" dist/agent-headunit-*.tgz --verify-tag --title "$TAG" --notes "Install the provider alongside agent-device. See the Windows quick start in the README."
           fi

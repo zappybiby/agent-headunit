@@ -1,12 +1,12 @@
 # agent-headunit
 
-Agent Headunit brings Agent Device’s snapshots, selectors, and controls to the live Android Auto screen in Open Headunit.
+agent-headunit brings agent-device’s snapshots, selectors, and controls to the live Android Auto screen in Open Headunit.
 
-Frida reads accessibility nodes from the Android processes that draw the car screen. Agent Headunit combines their windows into one snapshot, maps each control’s bounds to car screen coordinates, and checks the ref against the visible control before tapping.
+Frida reads accessibility nodes from the Android processes that draw the car screen. agent-headunit combines their windows into one snapshot, maps each control’s bounds to car screen coordinates, and checks the ref against the visible control before tapping.
 
 ## Windows quick start
 
-Use Windows x64 with Node.js 22.12+, stock Agent Device, the Android SDK, and 64-bit Python 3.12–3.15. Keep `adb` and `emulator` on PATH. Setup finds an installed Python and keeps its dependencies in a private environment.
+Use Windows x64 with Node.js 22.12+, stock agent-device, the Android SDK, and 64-bit Python 3.12–3.15. Keep `adb` and `emulator` on PATH. Setup finds an installed Python and keeps its dependencies in a private environment.
 
 1. Download the `.tgz` from the [latest release](https://github.com/zappybiby/agent-headunit/releases/latest) into an empty folder. Open PowerShell there.
 2. Install the provider and select your rooted phone and Open Headunit receiver from the installed AVDs. If you need to create them, follow [Create the emulators](#create-the-emulators) first.
@@ -86,4 +86,4 @@ In Magisk, choose **Install → Select and Patch a File → Download/fakeboot.im
 
 ## Source
 
-[`provider/`](provider/) connects Agent Device commands to the [Android backend](backend/). [`windows/`](windows/) handles setup, [`scripts/`](scripts/) builds the package, and [`tests/`](tests/) covers both runtimes. CI installs [Agent Device](https://github.com/callstack/agent-device) from npm and checks new releases daily.
+[`provider/`](provider/) connects agent-device commands to the [Android backend](backend/). [`windows/`](windows/) handles setup, [`scripts/`](scripts/) builds the package, and [`tests/`](tests/) covers both runtimes. CI installs [agent-device](https://github.com/callstack/agent-device) from npm and checks new releases daily.

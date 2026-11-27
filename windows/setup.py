@@ -1,4 +1,4 @@
-"""Configure Agent Headunit for an installed emulator pair on Windows."""
+"""Configure agent-headunit for an installed emulator pair on Windows."""
 
 import argparse
 from contextlib import contextmanager, nullcontext
@@ -82,7 +82,7 @@ def main():
     manifest_file = ROOT / "package.json"
     manifest = json.loads((manifest_file if manifest_file.exists() else ROOT / "provider/package.json").read_text("utf-8"))
     if os.name != "nt" or not shutil.which("agent-device"):
-        raise ValueError(f"Install Agent Device on Windows: npm install -g agent-device@{manifest['devDependencies']['agent-device']}")
+        raise ValueError(f"Install agent-device on Windows: npm install -g agent-device@{manifest['devDependencies']['agent-device']}")
     home = Path(os.environ.get("AGENT_DEVICE_HOME") or Path.home() / ".agent-device").resolve()
     config = home / "config.json"
     plugins = json.loads(config.read_text("utf-8-sig")).get("plugins", {}) if config.exists() else {}

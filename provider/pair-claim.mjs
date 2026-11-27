@@ -32,7 +32,7 @@ export async function claimProjectionTargets(targets, {
   const [{ i: acquireProcessLock }, { m: readCurrentOwnerIdentity }] =
     await Promise.all([chunk('file.js'), chunk('sdk-io.js')]);
   if (typeof acquireProcessLock !== 'function' || typeof readCurrentOwnerIdentity !== 'function') {
-    throw new Error(`This Agent Device installation has incompatible process lock exports. Tested with ${upstreamVersion}.`);
+    throw new Error(`This agent-device installation has incompatible process lock exports. Tested with ${upstreamVersion}.`);
   }
 
   const { pid, startTime } = await readCurrentOwnerIdentity();

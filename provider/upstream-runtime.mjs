@@ -79,7 +79,7 @@ export async function loadUpstreamRuntime(root, host) {
     scrollKeyboardOccludesSurfaceError, buildGesturePlan, scopeSnapshotNodes, createHostAudioProbeCaptureOperations,
     resolveManagedProcessIdentity, inspectManagedProcess, terminateManagedProcessSet]
     .some((value) => typeof value !== 'function')) {
-    throw new Error(`This Agent Device installation has incompatible runtime exports. Tested with ${upstreamVersion}.`);
+    throw new Error(`This agent-device installation has incompatible runtime exports. Tested with ${upstreamVersion}.`);
   }
   return Object.freeze({ createCloudWebDriverRuntime, createAndroidPlatformRuntime, deviceIdentity, runTreeAlertAction,
     parseWebDriverAndroidSnapshotNodes, acquireProviderKeyboard, attachScreenReaderOrder, attachReaderFacts,

@@ -131,7 +131,7 @@ export default function headunit(options = {}) {
       const upstream = upstreamRoot ? await loadUpstreamRuntime(upstreamRoot, host) : undefined;
       const config = managedOptions(options, host);
       if (config && !upstream) {
-        throw host.createError("UNSUPPORTED_OPERATION", `This Agent Device installation cannot start the emulator pair. Tested with ${upstreamVersion}.`);
+        throw host.createError("UNSUPPORTED_OPERATION", `This agent-device installation cannot start the emulator pair. Tested with ${upstreamVersion}.`);
       }
       let startingOrRunning = false;
       const legacyTouch = projectedTouchHelper(host.env.HEADUNIT_TOUCH_DEVICE_JAR, host.env.HEADUNIT_TOUCH_ROOT);

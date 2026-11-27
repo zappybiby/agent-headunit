@@ -3,7 +3,7 @@ on:
   workflow_call:
     inputs:
       agent-device:
-        description: Agent Device version to check in place of the tested version
+        description: agent-device version to check in place of the tested version
         type: string
         default: ''
 
@@ -28,17 +28,17 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Install stock Agent Device
+      - name: Install stock agent-device
         id: stock
         env:
           CANDIDATE: ${{ inputs.agent-device }}
         run: |
           $version = (Get-Content provider/package.json -Raw | ConvertFrom-Json).devDependencies.'agent-device'
           if ($env:CANDIDATE) { $version = $env:CANDIDATE }
-          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid Agent Device version.' }
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid agent-device version.' }
           npm install --global "agent-device@$version"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          if ((agent-device --version) -ne $version) { throw "Expected Agent Device $version." }
+          if ((agent-device --version) -ne $version) { throw "Expected agent-device $version." }
           "version=$version" >> $env:GITHUB_OUTPUT
       - name: Test provider and backend
         run: |
@@ -65,8 +65,8 @@ jobs:
           $cli = (Get-Command agent-device.cmd).Source
           npm install --global $archive
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          if ((Get-Command agent-device.cmd).Source -ne $cli) { throw 'The Agent Device command changed.' }
-          if ((agent-device --version) -ne $env:STOCK_VERSION) { throw 'The Agent Device version changed.' }
+          if ((Get-Command agent-device.cmd).Source -ne $cli) { throw 'The agent-device command changed.' }
+          if ((agent-device --version) -ne $env:STOCK_VERSION) { throw 'The agent-device version changed.' }
           $env:AGENT_DEVICE_HOME = "$env:RUNNER_TEMP/headunit-home"
           $env:AGENT_DEVICE_STATE_DIR = "$env:RUNNER_TEMP/headunit-state"
           $env:AGENT_DEVICE_SESSION = 'ci'
