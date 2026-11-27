@@ -25,8 +25,9 @@ def package_files():
         "LICENSE": (SOURCE / "LICENSE").read_bytes(),
         "README.md": (SOURCE / "README.md").read_bytes(),
         "install_provider.py": INSTALLER.read_bytes(),
-        "windows/setup.py": (SOURCE / "windows/setup.py").read_bytes(),
     }
+    for path in sorted((SOURCE / "windows").glob("*.py")):
+        files["windows/" + path.name] = path.read_bytes()
     for pattern in ("*.mjs", "cli/*.mjs"):
         for path in sorted(provider.glob(pattern)):
             files[path.relative_to(provider).as_posix()] = path.read_bytes()
@@ -36,6 +37,9 @@ def package_files():
     touch_jar = "android/projected-touch.jar"
     if PACKAGED:
         files["backend/" + touch_jar] = (backend / touch_jar).read_bytes()
+        lock = SOURCE / "windows/assets.json"
+        if lock.is_file():
+            files["windows/assets.json"] = lock.read_bytes()
     else:
         from build_touch import build_touch_helper
         files["backend/" + touch_jar] = build_touch_helper(backend / "android" / "ProjectedTouch.java")
@@ -57,6 +61,11 @@ def pack(output, *, env=None):
     with TemporaryDirectory(dir=output) as temporary:
         stage = Path(temporary)
         write_package(stage, package_files())
+        sys.path.insert(0, str(SOURCE / "windows"))
+        from assets import resolve_assets
+        receiver = json.loads((stage / "package.json").read_text("utf-8"))["openHeadunit"]
+        lock = resolve_assets(receiver, (stage / "backend/requirements.txt").read_text("utf-8"))
+        (stage / "windows/assets.json").write_text(json.dumps(lock, indent=2) + "\n", "utf-8")
         subprocess.run([npm, "pack", "--ignore-scripts", "--pack-destination", str(output)],
                        cwd=stage, env=env, check=True)
 

@@ -23,7 +23,7 @@ jobs:
           package-manager-cache: false
       - uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: '3.14'
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -48,8 +48,10 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           node --test "tests/*.test.mjs"
       - name: Build provider
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          & "$env:ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager.bat" "platforms;android-36" "build-tools;36.0.0"
+          & "$env:ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager.bat" "platforms;android-36" "build-tools;36.0.0" "emulator"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           python -B scripts/install_provider.py --pack dist
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
@@ -68,11 +70,18 @@ jobs:
           $env:AGENT_DEVICE_HOME = "$env:RUNNER_TEMP/headunit-home"
           $env:AGENT_DEVICE_STATE_DIR = "$env:RUNNER_TEMP/headunit-state"
           $env:AGENT_DEVICE_SESSION = 'ci'
-          $env:HEADUNIT_PYTHON = (Get-Command python).Source
+          $env:ANDROID_AVD_HOME = "$env:RUNNER_TEMP/headunit-avds"
+          foreach ($name in 'Pixel_Developer', 'Car_Tablet') {
+            $avd = New-Item -ItemType Directory -Path "$env:ANDROID_AVD_HOME/$name.avd" -Force
+            "path=$($avd.FullName)" | Set-Content "$env:ANDROID_AVD_HOME/$name.ini"
+            'abi.type=x86_64' | Set-Content "$avd/config.ini"
+          }
           $modules = (npm root --global)
           node --input-type=module -e "import {loadUpstreamRuntime} from './provider/upstream-runtime.mjs'; await loadUpstreamRuntime(process.argv[1]);" "$modules/agent-device"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           Set-Location (New-Item -ItemType Directory -Path "$env:RUNNER_TEMP/android-project")
+          agent-headunit setup --data-dir "$env:RUNNER_TEMP/headunit-data" --phone-avd Pixel_Developer --receiver-avd Car_Tablet
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
           agent-headunit setup --data-dir "$env:RUNNER_TEMP/headunit-data"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           agent-device connect headunit --platform android

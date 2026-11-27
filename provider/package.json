@@ -20,6 +20,12 @@
   "engines": {
     "node": ">=22.12"
   },
+  "windowsPython": ["3.15", "3.14", "3.13", "3.12"],
+  "openHeadunit": {
+    "repository": "andreknieriem/open-headunit",
+    "tag": "v.4.1.0-beta1",
+    "file": "com.andrerinas.headunitrevived_4.1.0-beta1.apk"
+  },
   "files": [
     "*.mjs",
     "cli",

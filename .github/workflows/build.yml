@@ -33,4 +33,8 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           test "$TAG" = "v$(node -p "require('./provider/package.json').version")"
-          gh release create "$TAG" dist/agent-headunit-*.tgz --verify-tag --title "$TAG" --notes "Install the provider alongside Agent Device. See the Windows quick start in the README."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/agent-headunit-*.tgz --clobber
+          else
+            gh release create "$TAG" dist/agent-headunit-*.tgz --verify-tag --title "$TAG" --notes "Install the provider alongside Agent Device. See the Windows quick start in the README."
+          fi

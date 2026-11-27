@@ -1,70 +1,126 @@
-"""Register the headunit provider with the installed Agent Device CLI on Windows."""
+"""Configure Agent Headunit for an installed emulator pair on Windows."""
 
 import argparse
+from contextlib import contextmanager, nullcontext
 import hashlib
-import lzma
+import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import sys
-from tempfile import TemporaryDirectory
-from urllib.request import urlopen
 import venv
 
-
-PROVIDER = Path(__file__).resolve().parents[1]
-FRIDA = "https://github.com/frida/frida/releases/download/17.27.6/frida-server-17.27.6-android-x86_64.xz"
-RECEIVER = ("https://github.com/andreknieriem/open-headunit/releases/download/"
-            "v.4.1.0-beta1/com.andrerinas.headunitrevived_4.1.0-beta1.apk")
+from assets import frida_server, release_file, resolve_assets
+from avds import choose_pair, inventory
 
 
-def download(url, destination, digest):
-    if destination.is_file():
-        with destination.open("rb") as existing:
-            if hashlib.file_digest(existing, "sha256").hexdigest() == digest:
-                return
-    print(f"Downloading {destination.name}", flush=True)
-    with TemporaryDirectory(dir=destination.parent) as tmp:
-        staged = Path(tmp) / destination.name
-        with urlopen(url, timeout=90) as source, staged.open("wb") as target:
-            shutil.copyfileobj(source, target)
-        with staged.open("rb") as source:
-            if hashlib.file_digest(source, "sha256").hexdigest() != digest:
-                raise ValueError(f"SHA-256 mismatch for {destination.name}.")
-        staged.replace(destination)
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "backend"))
+from avd_pair import RECEIVER, HeadunitError, adb, emulator_executable, running_avds
 
 
-def install(phone, receiver, data):
+@contextmanager
+def setup_lock(directory):
+    import msvcrt
+    directory.mkdir(parents=True, exist_ok=True)
+    with (directory / ".agent-headunit-setup.lock").open("a+b") as lock:
+        lock.seek(0)
+        try:
+            msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+        except OSError as error:
+            raise ValueError(f"Another setup is using {directory}. Retry when it finishes.") from error
+        try:
+            yield
+        finally:
+            lock.seek(0)
+            msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
+
+
+def runtime(data):
+    requirements = ROOT / "backend/requirements.txt"
+    identity = hashlib.sha256(requirements.read_bytes() + os.fsencode(sys.base_prefix)
+                              + sys.implementation.cache_tag.encode()).hexdigest()[:16]
+    directory = data / "runtimes" / identity
+    python = directory / "Scripts/python.exe"
+    ready = directory / ".installed"
+    if not (python.is_file() and ready.is_file()):
+        venv.EnvBuilder(with_pip=True).create(directory)
+        subprocess.run([python, "-m", "pip", "install", "-r", requirements], check=True)
+        ready.touch()
+    version = subprocess.check_output([python, "-I", "-c", "import frida; print(frida.__version__)"], text=True).strip()
+    return python, version
+
+
+def install_receiver(serial, cache, asset, local_apk):
+    if local_apk is None and "package:" + RECEIVER in adb(serial, "shell", "pm", "list", "packages", RECEIVER).splitlines():
+        print(f"Open Headunit is already installed on {serial}.")
+        return
+    apk = local_apk or release_file(cache, asset)
+    subprocess.run(["adb", "-s", serial, "install", "-r", str(apk)], check=True)
+    if "package:" + RECEIVER not in adb(serial, "shell", "pm", "list", "packages", RECEIVER).splitlines():
+        raise ValueError(f"The APK did not install the expected receiver package {RECEIVER} on {serial}.")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--list-avds", action="store_true", help="list installed AVDs and exit")
+    parser.add_argument("--phone-avd", help="rooted Android Auto phone AVD")
+    parser.add_argument("--receiver-avd", help="Open Headunit receiver AVD")
+    parser.add_argument("--install-receiver", action="store_true", help="install Open Headunit on the running receiver if missing")
+    parser.add_argument("--receiver-apk", type=Path, help="install your own Open Headunit APK on the selected receiver")
+    parser.add_argument("--data-dir", type=Path, default=Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "agent-headunit")
+    args = parser.parse_args()
+    devices = inventory(emulator_executable())
+    if args.list_avds:
+        for name, (abi, tag) in devices.items():
+            print(f"{name}\t{abi}\t{tag}")
+        if not devices:
+            print("No installed AVDs found.")
+        return
+
+    manifest_file = ROOT / "package.json"
+    manifest = json.loads((manifest_file if manifest_file.exists() else ROOT / "provider/package.json").read_text("utf-8"))
     if os.name != "nt" or not shutil.which("agent-device"):
-        raise ValueError("Install Agent Device on Windows and make agent-device available on PATH.")
-    data.mkdir(parents=True, exist_ok=True)
-    venv.EnvBuilder(with_pip=True).create(data / "python")
-    python = data / "python/Scripts/python.exe"
-    subprocess.run([python, "-m", "pip", "install", "-r", PROVIDER / "backend/requirements.txt"], check=True)
-    archive = data / "frida-server.xz"
-    download(FRIDA, archive, "5d3030f90fc110fc91249c392e1f1402522f89753a6404e83884fdaa31a04bf0")
-    binary = data / "frida-server"
-    with TemporaryDirectory(dir=data) as tmp:
-        staged = Path(tmp) / binary.name
-        with lzma.open(archive) as source, staged.open("wb") as target:
-            shutil.copyfileobj(source, target)
-        staged.replace(binary)
-    apk = data / "open-headunit.apk"
-    download(RECEIVER, apk, "3ce6e2c798685df7eeeb5ae4ba93655e646f64b12b2747c0053ba5dd1a7a12aa")
-    home = Path(os.environ.get("AGENT_DEVICE_HOME") or Path.home() / ".agent-device")
-    subprocess.run([python, "-B", PROVIDER / "install_provider.py", home,
-                    "--phone-avd", phone, "--receiver-avd", receiver, "--frida-server", binary], check=True)
-    print(f"Configured {phone} and {receiver}. Install {apk} on {receiver}.")
+        raise ValueError(f"Install Agent Device on Windows: npm install -g agent-device@{manifest['devDependencies']['agent-device']}")
+    home = Path(os.environ.get("AGENT_DEVICE_HOME") or Path.home() / ".agent-device").resolve()
+    config = home / "config.json"
+    plugins = json.loads(config.read_text("utf-8-sig")).get("plugins", {}) if config.exists() else {}
+    saved = plugins.get(manifest["name"], {}).get("options", {})
+    phone, receiver = choose_pair(devices, args.phone_avd, args.receiver_avd, saved)
+    lock = ROOT / "windows/assets.json"
+    assets = (json.loads(lock.read_text("utf-8")) if lock.is_file() else
+              resolve_assets(manifest["openHeadunit"], (ROOT / "backend/requirements.txt").read_text("utf-8")))
+    abi = devices[phone][0]
+    if abi not in assets["servers"]:
+        raise ValueError(f"No Android Frida server for phone ABI {abi!r}.")
+    receiver_serial = None
+    if args.install_receiver or args.receiver_apk:
+        if args.receiver_apk and not args.receiver_apk.is_file():
+            raise ValueError(f"Receiver APK not found: {args.receiver_apk}")
+        receiver_serial = running_avds([receiver]).get(receiver)
+        if not receiver_serial:
+            raise ValueError(f"Start {receiver}, wait for the home screen, then repeat setup to install Open Headunit.")
+
+    data = args.data_dir.expanduser().resolve()
+    cache = data / "downloads"
+    print(f"Phone: {phone} ({devices[phone][0]}). Receiver: {receiver}.", flush=True)
+    with setup_lock(data):
+        python, version = runtime(data)
+        if version != assets["fridaVersion"]:
+            raise ValueError(f"Frida {version} does not match the release server {assets['fridaVersion']}.")
+        server = frida_server(cache, assets["servers"][abi])
+        if receiver_serial:
+            install_receiver(receiver_serial, cache, assets["receiver"], args.receiver_apk)
+        installer = ROOT / "install_provider.py" if manifest_file.is_file() else ROOT / "scripts/install_provider.py"
+        with setup_lock(home) if home != data else nullcontext():
+            subprocess.run([python, "-B", installer, home, "--phone-avd", phone, "--receiver-avd", receiver,
+                            "--frida-server", server, *(["--with-audio"] if saved.get("audio") else [])], check=True)
+    print("Ready. Run agent-device connect headunit --platform android.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--phone-avd", default="AA_Phone")
-    parser.add_argument("--receiver-avd", default="AA_Receiver")
-    parser.add_argument("--data-dir", type=Path, default=Path(os.environ.get("LOCALAPPDATA", Path.home())) / "agent-headunit")
-    args = parser.parse_args()
     try:
-        install(args.phone_avd, args.receiver_avd, args.data_dir.expanduser().resolve())
-    except (OSError, ValueError, subprocess.CalledProcessError) as error:
+        main()
+    except (OSError, EOFError, ValueError, subprocess.CalledProcessError, HeadunitError) as error:
         sys.exit(str(error))
