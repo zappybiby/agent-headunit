@@ -6,7 +6,7 @@ import math
 import sys
 import time
 
-from transport import Connection, HeadunitError
+from projection.connection import Connection, HeadunitError
 
 
 def matches(nodes, selector):
@@ -154,7 +154,7 @@ def main():
     args = parser().parse_args()
     try:
         if args.op == "mirror":
-            from mirror import run
+            from accessibility.mirror import run
             run(args.serial, args.receiver)
             return 0
         if args.op == "displays":
@@ -196,9 +196,9 @@ if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
     if sys.argv[1:] == ["rpc"]:
-        from agent_rpc import main as rpc_main
+        from rpc import main as rpc_main
         raise SystemExit(rpc_main())
     if sys.argv[1:] == ["rpc-worker"]:
-        from agent_rpc import worker
+        from rpc import worker
         raise SystemExit(worker())
     raise SystemExit(main())

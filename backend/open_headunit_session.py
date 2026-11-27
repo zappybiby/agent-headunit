@@ -16,9 +16,9 @@ from tempfile import TemporaryDirectory
 from threading import Event, Thread
 import time
 
-from agent_rpc import receiver_serial
-from avd_pair import check_owner, prepare_pair
-from transport import Connection, HeadunitError, adb
+from emulators.receiver import receiver_serial
+from emulators.pair import check_owner, prepare_pair
+from projection.connection import Connection, HeadunitError, adb
 
 
 def root_transport(phone):

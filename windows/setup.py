@@ -17,7 +17,9 @@ from avds import choose_pair, inventory
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
-from avd_pair import RECEIVER, HeadunitError, adb, emulator_executable, running_avds
+from emulators.pair import emulator_executable, running_avds
+from emulators.receiver import RECEIVER
+from projection.connection import HeadunitError, adb
 
 
 @contextmanager

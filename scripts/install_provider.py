@@ -28,10 +28,13 @@ def package_files():
     }
     for path in sorted((SOURCE / "windows").glob("*.py")):
         files["windows/" + path.name] = path.read_bytes()
-    for pattern in ("*.mjs", "cli/*.mjs"):
-        for path in sorted(provider.glob(pattern)):
+    for entry in json.loads(files["package.json"])["files"]:
+        if entry in {"install_provider.py", "windows", "backend"}:
+            continue
+        source = provider / entry
+        for path in sorted(source.rglob("*.mjs")) if source.is_dir() else [source]:
             files[path.relative_to(provider).as_posix()] = path.read_bytes()
-    for pattern in ("*.py", "frida/*.js", "requirements.txt", "start-server.yaml"):
+    for pattern in ("*.py", "*/*.py", "frida/*.js", "requirements.txt", "emulators/*.yaml"):
         for path in sorted(backend.glob(pattern)):
             files["backend/" + path.relative_to(backend).as_posix()] = path.read_bytes()
     touch_jar = "android/projected-touch.jar"

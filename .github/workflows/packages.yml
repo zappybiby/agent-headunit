@@ -45,7 +45,7 @@ jobs:
           if ((agent-device --version) -ne $version) { throw "Expected agent-device $version." }
           "version=$version" >> $env:GITHUB_OUTPUT
       - name: Test provider
-        run: node --test "tests/*.test.mjs"
+        run: node --test "tests/**/*.test.mjs"
       - name: Build provider
         env:
           GH_TOKEN: ${{ github.token }}
@@ -76,7 +76,7 @@ jobs:
             'abi.type=x86_64' | Set-Content "$avd/config.ini"
           }
           $modules = (npm root --global)
-          node --input-type=module -e "import {loadUpstreamRuntime} from './provider/upstream-runtime.mjs'; await loadUpstreamRuntime(process.argv[1]);" "$modules/agent-device"
+          node --input-type=module -e "import {pathToFileURL} from 'node:url'; const {loadUpstreamRuntime} = await import(pathToFileURL(process.argv[1])); await loadUpstreamRuntime(process.argv[2]);" "$modules/agent-headunit/runtime/upstream.mjs" "$modules/agent-device"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           Set-Location (New-Item -ItemType Directory -Path "$env:RUNNER_TEMP/android-project")
           agent-headunit setup --data-dir "$env:RUNNER_TEMP/headunit-data" --phone-avd Pixel_Developer --receiver-avd Car_Tablet
@@ -120,4 +120,5 @@ jobs:
           $version = (Get-Content dist/package/windows/assets.json -Raw | ConvertFrom-Json).fridaVersion
           python -c "import sys, frida; from PIL import Image; from importlib.resources import files; assert frida.__version__ == sys.argv[1]; assert files('frida_tools').joinpath('bridges', 'java.js').is_file()" $version
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $env:HEADUNIT_TEST_PACKAGE = (Resolve-Path dist/package).Path
           python -B -m unittest discover

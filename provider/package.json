@@ -8,7 +8,7 @@
   "exports": {
     ".": "./index.mjs",
     "./agent-device": "./index.mjs",
-    "./http-auth": "./http-auth.mjs"
+    "./http-auth": "./runtime/http-auth.mjs"
   },
   "bin": {
     "agent-headunit": "./cli/headunit.mjs",
@@ -26,8 +26,15 @@
     "package": "com.andrerinas.headunitrevived"
   },
   "files": [
-    "*.mjs",
+    "index.mjs",
     "cli",
+    "metro",
+    "observability",
+    "phone",
+    "projection",
+    "receiver",
+    "runtime",
+    "session",
     "install_provider.py",
     "windows",
     "backend"

@@ -105,4 +105,13 @@ Frida reads accessibility nodes from the Android processes that draw the car scr
 
 ## Source
 
-[`provider/`](provider/) connects agent-device commands to the [Android backend](backend/). [`windows/`](windows/) handles setup, [`scripts/`](scripts/) builds the package, and [`tests/`](tests/) covers both runtimes. CI checks upstream daily. Each release records the compatible Frida, frida-tools, and Pillow versions it tested, the matching Android servers, and the Open Headunit release APK.
+| Working on | Start here |
+| --- | --- |
+| CLI and agent-device integration | [CLI commands](provider/cli/) · [Plugin registration](provider/index.mjs) · [Runtime](provider/runtime/) |
+| Snapshots, refs, and coordinates | [Snapshot adapter](provider/projection/snapshot.mjs) · [Android accessibility tree](backend/accessibility/) · [Display geometry](backend/projection/displays.py) · [Frida scripts](backend/frida/) |
+| Touch, scrolling, and typing | [Projection driver](provider/projection/) · [Android input](backend/controls/) |
+| App launching and deep links | [Android Auto apps](backend/apps/) |
+| Emulator connections and device controls | [Sessions](provider/session/) · [Emulator pair](backend/emulators/) · [Phone](provider/phone/) · [Receiver](provider/receiver/) |
+| Installation and releases | [Windows setup](windows/) · [Package builder](scripts/install_provider.py) · [CI](.github/workflows/) |
+
+[Tests](tests/) follow the same feature folders as the code they cover.

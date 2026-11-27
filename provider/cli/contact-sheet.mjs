@@ -3,8 +3,9 @@ import { execFile, spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { backendFile } from "../runtime/backend-file.mjs";
 
-const script = fileURLToPath(new URL("../backend/contact_sheet.py", import.meta.url));
+const script = backendFile("contact_sheet.py");
 const run = promisify(execFile);
 
 export async function contactSheet({ video, out, cwd, env, python }) {
