@@ -11,7 +11,7 @@ import subprocess
 import sys
 import venv
 
-from assets import frida_server, release_file, resolve_assets
+from assets import frida_server, release_file, resolve_release
 from avds import choose_pair, inventory
 
 
@@ -37,15 +37,16 @@ def setup_lock(directory):
             msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
 
 
-def runtime(data):
-    requirements = ROOT / "backend/requirements.txt"
-    identity = hashlib.sha256(requirements.read_bytes() + os.fsencode(sys.base_prefix)
+def runtime(data, pins):
+    identity = hashlib.sha256(pins.encode("utf-8") + os.fsencode(sys.base_prefix)
                               + sys.implementation.cache_tag.encode()).hexdigest()[:16]
     directory = data / "runtimes" / identity
     python = directory / "Scripts/python.exe"
     ready = directory / ".installed"
     if not (python.is_file() and ready.is_file()):
         venv.EnvBuilder(with_pip=True).create(directory)
+        requirements = directory / "requirements.txt"
+        requirements.write_text(pins, "utf-8")
         subprocess.run([python, "-m", "pip", "install", "-r", requirements], check=True)
         ready.touch()
     version = subprocess.check_output([python, "-I", "-c", "import frida; print(frida.__version__)"], text=True).strip()
@@ -89,8 +90,12 @@ def main():
     saved = plugins.get(manifest["name"], {}).get("options", {})
     phone, receiver = choose_pair(devices, args.phone_avd, args.receiver_avd, saved)
     lock = ROOT / "windows/assets.json"
-    assets = (json.loads(lock.read_text("utf-8")) if lock.is_file() else
-              resolve_assets(manifest["openHeadunit"], (ROOT / "backend/requirements.txt").read_text("utf-8")))
+    requirements = ROOT / "backend/requirements.txt"
+    if lock.is_file():
+        pins = requirements.read_text("utf-8")
+        assets = json.loads(lock.read_text("utf-8"))
+    else:
+        pins, assets = resolve_release(manifest["openHeadunit"], requirements)
     abi = devices[phone][0]
     if abi not in assets["servers"]:
         raise ValueError(f"No Android Frida server for phone ABI {abi!r}.")
@@ -106,7 +111,7 @@ def main():
     cache = data / "downloads"
     print(f"Phone: {phone} ({devices[phone][0]}). Receiver: {receiver}.", flush=True)
     with setup_lock(data):
-        python, version = runtime(data)
+        python, version = runtime(data, pins)
         if version != assets["fridaVersion"]:
             raise ValueError(f"Frida {version} does not match the release server {assets['fridaVersion']}.")
         server = frida_server(cache, assets["servers"][abi])

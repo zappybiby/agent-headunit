@@ -1,4 +1,5 @@
 import hashlib
+import json
 from io import BytesIO
 import os
 from pathlib import Path
@@ -14,6 +15,30 @@ import windows.setup as setup
 
 
 class SetupTests(unittest.TestCase):
+    def test_release_uses_resolved_client_and_skips_debug_apk(self):
+        packages = [
+            {"metadata": {"name": name, "version": version}, "requested": requested}
+            for name, version, requested in (("frida", "17.99.1", True), ("frida-tools", "14.98.2", True),
+                                            ("Pillow", "13.7.0", True), ("colorama", "0.4.6", False))
+        ]
+        def report(command, check):
+            Path(command[command.index("--report") + 1]).write_text(json.dumps({"install": packages}), "utf-8")
+
+        def release_files(names):
+            return {name: {"digest": "sha256:" + "a" * 64, "browser_download_url": "https://example.test/" + name}
+                    for name in names}
+
+        servers = release_files(f"frida-server-17.99.1-android-{arch}.xz" for arch in assets.FRIDA_ARCH.values())
+        apks = release_files(["example.receiver_4.1.0-beta2.apk", "example.receiver_4.1.0-beta2_debug.apk"])
+        with patch.object(assets.subprocess, "run", side_effect=report), \
+                patch.object(assets, "github_assets", side_effect=[servers, apks]) as fetch:
+            pins, lock = assets.resolve_release({"package": "example.receiver", "repository": "owner/receiver"}, Path("deps"))
+        self.assertEqual(pins.splitlines(), ["frida==17.99.1", "frida-tools==14.98.2", "pillow==13.7.0"])
+        self.assertEqual(fetch.call_args_list[0].args, ("frida/frida", lock["fridaVersion"]))
+        self.assertEqual(fetch.call_args_list[1].args, ("owner/receiver",))
+        self.assertTrue(lock["servers"]["arm64-v8a"]["url"].endswith("-android-arm64.xz"))
+        self.assertTrue(lock["receiver"]["url"].endswith("/example.receiver_4.1.0-beta2.apk"))
+
     def test_inventory_uses_emulator_names_and_follows_external_avd_paths(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -1,4 +1,4 @@
-name: Check upstream agent-device
+name: Check upstream dependencies
 on:
   schedule:
     - cron: '17 7 * * *'
@@ -15,7 +15,7 @@ jobs:
     outputs:
       version: ${{ steps.check.outputs.version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - id: check
@@ -34,19 +34,19 @@ jobs:
 
   test:
     needs: latest
-    if: needs.latest.outputs.version != ''
     uses: ./.github/workflows/packages.yml
     with:
       agent-device: ${{ needs.latest.outputs.version }}
 
   propose:
     needs: [latest, test]
+    if: needs.latest.outputs.version != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Open a draft for the tested version
         env:
           VERSION: ${{ needs.latest.outputs.version }}

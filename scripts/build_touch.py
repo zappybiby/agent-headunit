@@ -55,14 +55,11 @@ def java_tools():
     home = os.environ.get("JAVA_HOME")
     compiler = Path(home).expanduser() / "bin" / ("javac" + executable) if home else shutil.which("javac" + executable)
     if not compiler:
-        raise FileNotFoundError(f"Install JDK {JAVA_VERSION} and set JAVA_HOME to it.")
+        raise FileNotFoundError(f"Install JDK {JAVA_VERSION} or newer and set JAVA_HOME to it.")
     javac = Path(compiler).resolve()
     java = javac.with_name("java" + executable)
     if not javac.is_file() or not java.is_file():
-        raise FileNotFoundError(f"JDK {JAVA_VERSION} must contain java and javac in {javac.parent}.")
-    version = run_tool([javac, "-version"]).strip()
-    if not re.search(rf"(?m)^javac {JAVA_VERSION}(?:\D|$)", version):
-        raise OSError(f"The projected touch helper requires JDK {JAVA_VERSION}. Found {version} at {javac}.")
+        raise FileNotFoundError(f"Expected java and javac in {javac.parent}.")
     return java, javac
 
 

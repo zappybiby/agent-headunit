@@ -86,4 +86,4 @@ In Magisk, choose **Install → Select and Patch a File → Download/fakeboot.im
 
 ## Source
 
-[`provider/`](provider/) connects agent-device commands to the [Android backend](backend/). [`windows/`](windows/) handles setup, [`scripts/`](scripts/) builds the package, and [`tests/`](tests/) covers both runtimes. CI installs [agent-device](https://github.com/callstack/agent-device) from npm and checks new releases daily.
+[`provider/`](provider/) connects agent-device commands to the [Android backend](backend/). [`windows/`](windows/) handles setup, [`scripts/`](scripts/) builds the package, and [`tests/`](tests/) covers both runtimes. CI checks upstream daily. Each release records the compatible Frida, frida-tools, and Pillow versions it tested, the matching Android servers, and the Open Headunit release APK.

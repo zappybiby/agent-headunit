@@ -141,7 +141,7 @@ export default function headunit(options = {}) {
         endpoint: "http://127.0.0.1:0",
         supportsTextEntryDelay: true,
         requestPolicy: { retryAttempts: 0, timeoutMs: legacyTouch || config ? 100000 : 35000 },
-        // Agent-device 0.21.43 uses this for cleanup. Preparation follows the lease deadline.
+        // agent-device uses this for cleanup. Preparation follows the lease deadline.
         ...(config && { providerCallbackTimeoutMs: 75000 }),
         capabilityOverrides: {
           ...Object.fromEntries(unsupported.filter((op) =>

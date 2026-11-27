@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 import re
 import shutil
+import subprocess
+import sys
 from tempfile import TemporaryDirectory
 from urllib.parse import quote, urlsplit
 from urllib.request import Request, urlopen
@@ -15,9 +17,10 @@ from urllib.request import Request, urlopen
 FRIDA_ARCH = {"armeabi-v7a": "arm", "arm64-v8a": "arm64", "x86": "x86", "x86_64": "x86_64"}
 
 
-def github_assets(repo, tag):
+def github_assets(repo, tag=None):
     headers = {"Authorization": "Bearer " + os.environ["GH_TOKEN"]} if os.environ.get("GH_TOKEN") else {}
-    request = Request(f"https://api.github.com/repos/{repo}/releases/tags/{quote(tag, safe='')}", headers=headers)
+    release = "tags/" + quote(tag, safe="") if tag else "latest"
+    request = Request(f"https://api.github.com/repos/{repo}/releases/{release}", headers=headers)
     with urlopen(request, timeout=45) as response:
         assets = json.load(response)["assets"]
     return {asset["name"]: asset for asset in assets}
@@ -31,16 +34,26 @@ def verified_asset(assets, name):
     return {"url": item["browser_download_url"], "sha256": digest[7:]}
 
 
-def resolve_assets(receiver, requirements):
-    version = re.search(r"^frida==([\d.]+)$", requirements, flags=re.MULTILINE)
-    if not version:
-        raise ValueError("Pin the Frida client in backend/requirements.txt before packaging.")
-    version = version[1]
+def resolve_release(receiver, requirements):
+    with TemporaryDirectory() as tmp:
+        report = Path(tmp) / "pip.json"
+        subprocess.run([sys.executable, "-m", "pip", "install", "--dry-run", "--ignore-installed",
+                        "--quiet", "--report", report, "-r", requirements], check=True)
+        packages = json.loads(report.read_text("utf-8"))["install"]
+    versions = {item["metadata"]["name"].lower(): item["metadata"]["version"]
+                for item in packages if item["requested"]}
+    version = versions["frida"]
     assets = github_assets("frida/frida", version)
     servers = {abi: verified_asset(assets, f"frida-server-{version}-android-{arch}.xz")
                for abi, arch in FRIDA_ARCH.items()}
-    apk = verified_asset(github_assets(receiver["repository"], receiver["tag"]), receiver["file"])
-    return {"fridaVersion": version, "servers": servers, "receiver": apk}
+    apks = github_assets(receiver["repository"])
+    distribution = re.compile(re.escape(receiver["package"]) + r"_[0-9][0-9A-Za-z.-]*\.apk")
+    names = [name for name in apks if distribution.fullmatch(name) and not re.search(r"(?i)(debug|unsigned)", name)]
+    if len(names) != 1:
+        raise ValueError(f"Expected one release APK for {receiver['package']}, found {names}.")
+    lock = {"fridaVersion": version, "servers": servers, "receiver": verified_asset(apks, names[0])}
+    pins = "".join(f"{name}=={value}\n" for name, value in sorted(versions.items()))
+    return pins, lock
 
 
 def release_file(cache, asset):

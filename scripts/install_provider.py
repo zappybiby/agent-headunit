@@ -62,10 +62,14 @@ def pack(output, *, env=None):
         stage = Path(temporary)
         write_package(stage, package_files())
         sys.path.insert(0, str(SOURCE / "windows"))
-        from assets import resolve_assets
-        receiver = json.loads((stage / "package.json").read_text("utf-8"))["openHeadunit"]
-        lock = resolve_assets(receiver, (stage / "backend/requirements.txt").read_text("utf-8"))
-        (stage / "windows/assets.json").write_text(json.dumps(lock, indent=2) + "\n", "utf-8")
+        from assets import resolve_release
+        lock = stage / "windows/assets.json"
+        if not lock.is_file():
+            receiver = json.loads((stage / "package.json").read_text("utf-8"))["openHeadunit"]
+            requirements = stage / "backend/requirements.txt"
+            pins, assets = resolve_release(receiver, requirements)
+            requirements.write_text(pins, "utf-8")
+            lock.write_text(json.dumps(assets, indent=2) + "\n", "utf-8")
         subprocess.run([npm, "pack", "--ignore-scripts", "--pack-destination", str(output)],
                        cwd=stage, env=env, check=True)
 
