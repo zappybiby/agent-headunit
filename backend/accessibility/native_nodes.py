@@ -134,7 +134,7 @@ def window_nodes(root: dict, panel: dict, window_key: str) -> list[dict]:
             if view.get("fieldId"):
                 node["fieldId"] = view["fieldId"]
             for key in ("roleDescription", "heading", "stateDescription", "tooltip", "clickLabel", "selectionStart", "selectionEnd",
-                        "hiddenContentAbove", "hiddenContentBelow", "reader"):
+                        "hiddenContentAbove", "hiddenContentBelow", "iconResource", "imageItemTitle", "reader"):
                 if key in semantic:
                     node[key] = semantic[key]
             if known_axis == "vertical" and not ("hiddenContentAbove" in node or "hiddenContentBelow" in node):
@@ -183,6 +183,11 @@ def window_nodes(root: dict, panel: dict, window_key: str) -> list[dict]:
         source_id = view.get("meta:__hash__")
         identity = [scope, path, source_id, class_name, resource, node["text"],
                     node["description"], node.get("tooltip"), node.get("clickLabel"), pixels, children]
+        if node.get("iconResource"):
+            identity.append(node["iconResource"])
+            captions.add(node["iconResource"])
+        if node.get("imageItemTitle"):
+            identity.append(["imageItemTitle", node["imageItemTitle"]])
         data = json.dumps(identity, ensure_ascii=True, separators=(",", ":")).encode()
         node["ref"] = "@e" + hashlib.blake2s(data, digest_size=8).hexdigest()
         renderer = node.get("rendererTarget")

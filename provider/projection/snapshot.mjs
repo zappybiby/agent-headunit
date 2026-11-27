@@ -15,7 +15,7 @@ function annotatePresentation(node, control) {
   }
   const state = control.stateDescription?.trim().replace(/\s+/g, " ");
   if (state) node.stateDescription = state;
-  if (unnamed && !interactive && passiveClasses.has(control.className) &&
+  if (!node.label?.trim() && !interactive && passiveClasses.has(control.className) &&
       !node.value && !control.hint && !control.roleDescription && !control.heading && !state &&
       !control.reader?.collection && !control.reader?.range && !control.hiddenContentAbove && !control.hiddenContentBelow) {
     node.omitFromTextSnapshot = true;
@@ -81,7 +81,7 @@ function readerEvidence(native, projected, nodes, { attachReaderFacts, buildRead
     (parent ?? root).children.push(reader);
     byRef.set(node.ref, reader);
   }
-  return buildReaderEvidence(root, { nodes, sourceNodes: projected.map((node) => byRef.get(node.ref)) });
+  return buildReaderEvidence(root, { nodes, sourceNodes: projected.map((node) => byRef.get(node.readerRef ?? node.ref)) });
 }
 
 export function bindProjectedSnapshot(readSource, upstream) {

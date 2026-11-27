@@ -133,7 +133,9 @@ def managed_device(serial):
 @cache
 def java_agent(name):
     bridge = files("frida_tools").joinpath("bridges", "java.js").read_text(encoding="utf-8")
-    probe = Path(__file__).resolve().parents[1].joinpath("frida", name + ".js").read_text(encoding="utf-8")
+    directory = Path(__file__).resolve().parents[1] / "frida"
+    names = ("projected-icons", name) if name == "projected-tree" else (name,)
+    probe = "\n".join((directory / (part + ".js")).read_text(encoding="utf-8") for part in names)
     return "const Java = (() => {" + bridge + "\nreturn bridge;})();\n" + probe
 
 

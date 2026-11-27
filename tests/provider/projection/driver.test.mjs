@@ -88,7 +88,8 @@ test("projected snapshots use Android labels and mark passive decoration for tex
   const named = { ...button, ref: "@named", clickLabel: "Play", tooltip: "Controls" };
   const literal = { ...button, ref: "@literal", text: "Image", tooltip: "Controls" };
   const unnamed = { ...button, id: "", tooltip: "", stateDescription: "Selected" };
-  const projected = [decoration, named, literal, unnamed];
+  const headerIcon = { ...decoration, ref: "@headerIcon", description: "Image" };
+  const projected = [decoration, named, literal, unnamed, headerIcon];
   const source = pageSource({ ...scene, nodes: projected });
   assert.match(source, /content-desc="Play"/);
   assert.match(source, /text="Image" content-desc="Image"/);
@@ -96,7 +97,7 @@ test("projected snapshots use Android labels and mark passive decoration for tex
     /content-desc="Open menu"/);
   const capture = bindProjectedSnapshot(async () => ({ source, projected, native: projected, viewport: scene.viewport }), {
     parseWebDriverAndroidSnapshotNodes: () => [{ index: 0 }, { index: 1, label: "Play" },
-      { index: 2, label: "Image" }, { index: 3, label: "Image" }],
+      { index: 2, label: "Image" }, { index: 3, label: "Image" }, { index: 4, label: "Image" }],
     acquireProviderKeyboard: ({ nodes }) => ({ nodes }),
   });
   const { nodes } = await capture({}, new AbortController().signal);
@@ -105,7 +106,46 @@ test("projected snapshots use Android labels and mark passive decoration for tex
     { index: 1, label: "Play", contentDescription: "Image" },
     { index: 2, label: "Image" },
     { index: 3, label: "Image", stateDescription: "Selected", presentationLabel: "", presentationHints: ["unlabeled", "tap"] },
+    { index: 4, label: "Image" },
   ]);
+});
+
+test("uses exact image resources and item titles after native captions", () => {
+  const button = { ...scene.nodes[1], description: "Image", iconResource: "sample:drawable/seek" };
+  const capture = (...controls) => pageSource({ ...scene, nodes: [scene.nodes[0], ...controls] });
+  assert.match(capture(button), /content-desc="drawable\/seek"/);
+  assert.match(capture({ ...button, clickLabel: "Jump ahead" }), /content-desc="Jump ahead"/);
+  assert.match(capture({ ...button, description: "Forward" }), /content-desc="Forward"/);
+  assert.match(capture({ ...button, iconResource: undefined, imageItemTitle: "A & B" }),
+    /content-desc="Image for A &amp; B"/);
+  assert.doesNotMatch(pageSource({ ...scene, nodes: [scene.nodes[0], button] }, undefined, { raw: true }),
+    /content-desc="drawable/);
+});
+
+test("a named cover absorbs only its single passive Image leaf in the concise tree", () => {
+  const base = { ...scene.nodes[0], className: "android.view.View", clickable: false, id: "" };
+  const headerIcon = { ...base, ref: "@headerIcon", parent: "@root", description: "Image" };
+  const cover = { ...base, ref: "@cover", parent: "@root", imageItemTitle: "Playlist" };
+  const image = { ...base, ref: "@image", parent: cover.ref, description: "Image", reader: { important: true } };
+  function capture(child = image, extra = [], raw = false, parent = cover) {
+    const nodes = [scene.nodes[0], headerIcon, parent, child, ...extra];
+    const published = [];
+    const xml = pageSource({ ...scene, nodes }, n => published.push(n), { raw });
+    return { xml, published, refs: published.map(n => n.ref) };
+  }
+  const concise = capture();
+  assert.deepEqual(concise.refs, ["@root", "@headerIcon", "@cover"]);
+  assert.match(concise.xml, /content-desc="Image for Playlist"/);
+  assert.equal(concise.published.at(-1).readerRef, image.ref);
+  assert.deepEqual(capture(image, [], true).refs, ["@root", "@headerIcon", "@cover", "@image"]);
+  for (const change of [
+    { actions: ["press"] }, { focusable: true }, { text: "Image" }, { description: "Download" },
+    { iconResource: "app:drawable/download" }, { id: "id/cover" }, { stateDescription: "Selected" },
+    { reader: { range: true } }, { carBounds: [1, 400, 800, 480] },
+  ]) assert.ok(capture({ ...image, ...change }).refs.includes(image.ref));
+  assert.ok(capture(image, [{ ...image, ref: "@overlay" }]).refs.includes(image.ref));
+  assert.ok(capture(image, [{ ...image, ref: "@detail", parent: image.ref }]).refs.includes(image.ref));
+  assert.ok(capture(image, [], false, { ...cover, imageItemTitle: undefined }).refs.includes(image.ref));
 });
 
 test("W3C pointer coordinates and timing map to a single display gesture", () => {

@@ -24,26 +24,44 @@ export function pageSource(scene, onNode, { raw = false } = {}) {
   }
   function hasSeparateContent(node, label) {
     if (node.actions.length || node.editable || node.checkable || node.longClickable) return true;
-    if ([node.text, node.description].some((value) => value && value !== label)) return true;
+    if (node.imageItemTitle || node.iconResource) return true;
+    if (node.text && node.text !== label) return true;
+    if (node.description && node.description !== label && node.description.trim().toLowerCase() !== "image") return true;
     return children.get(node.ref)?.some((child) => hasSeparateContent(child, label)) ?? false;
   }
   function descendantLabel(node) {
     const labels = new Set();
+    let imageDescription = "";
     function visit(child) {
       if (child.actions.length || child.editable || child.checkable || child.longClickable) return;
-      for (const value of [child.text, child.description]) if (value) labels.add(value);
+      if (child.text) labels.add(child.text);
+      if (child.description?.trim().toLowerCase() === "image") imageDescription = child.description;
+      else if (child.description) labels.add(child.description);
       for (const nested of children.get(child.ref) ?? []) visit(nested);
     }
     for (const child of children.get(node.ref) ?? []) visit(child);
+    if (!labels.size) return imageDescription;
     return labels.size === 1 ? labels.values().next().value : "";
   }
   function passive(node) {
     return node.clickable === false && !node.actions.length && !node.editable && !node.checkable &&
       !node.longClickable && !node.scrollAxis && !node.focusable && !node.focused;
   }
+  function plainDecoration(node) {
+    return passive(node) && !node.id && !node.roleDescription && !node.stateDescription && !node.heading &&
+      !node.hint && !node.tooltip && !node.selected && !node.clickLabel && !node.password &&
+      !node.imageItemTitle && !node.iconResource;
+  }
+  function isArtworkPlaceholder(leaf, artwork) {
+    return !children.has(leaf.ref) && plainDecoration(leaf) && !leaf.text &&
+      leaf.description?.trim().toLowerCase() === "image" && leaf.enabled === artwork.enabled &&
+      leaf.display === artwork.display && leaf.window === artwork.window &&
+      leaf.carBounds.every((v, i) => v === artwork.carBounds[i]) &&
+      !leaf.reader?.focusable && !leaf.reader?.focusAction && !leaf.reader?.range && !leaf.reader?.collection &&
+      !leaf.reader?.before && !leaf.reader?.after;
+  }
   function repeatsCaption(node, owner) {
-    if (!owner || !passive(node) || node.id || node.roleDescription || node.stateDescription ||
-        node.heading || node.hint || node.tooltip || node.display !== owner.control.display ||
+    if (!owner || !plainDecoration(node) || node.display !== owner.control.display ||
         node.window !== owner.control.window) return false;
     const names = [node.text, node.description].filter(Boolean);
     if (!names.length || !names.every((name) => name === owner.name)) return false;
@@ -63,7 +81,6 @@ export function pageSource(scene, onNode, { raw = false } = {}) {
     if (repeatsCaption(node, owner)) {
       return (children.get(node.ref) ?? []).map((child) => render(child, owner)).join("");
     }
-    onNode?.(node);
     const [left, top, right, bottom] = nodeBounds(node);
     const clickable = node.actions.includes("press");
     const disabledControl = !raw && node.clickable === true && node.enabled === false;
@@ -87,6 +104,9 @@ export function pageSource(scene, onNode, { raw = false } = {}) {
       const fallback = [node.clickLabel, node.tooltip].map((value) => value?.trim())
         .find((value) => value && value.toLowerCase() !== "image");
       if (fallback) description = fallback;
+      else if (!raw && node.iconResource && (clickable || disabledControl || node.className === "android.widget.ImageView")) {
+        description = node.iconResource.split(":").at(-1);
+      } else if (!raw && node.imageItemTitle) description = "Image for " + node.imageItemTitle;
     }
     const name = node.text || description;
     const captionBounds = disabledControl ? node.carBounds : node.carPressBounds;
@@ -96,7 +116,7 @@ export function pageSource(scene, onNode, { raw = false } = {}) {
     const attrs = {
       class: publishedClass ?? node.className,
       "native-class": publishedClass ? node.className : undefined,
-      package: node.packageName, "resource-id": node.id,
+      package: node.packageName, "resource-id": node.id, "icon-resource": node.iconResource,
       text, "content-desc": description, clickable: node.clickable, enabled: node.enabled,
       "role-description": node.roleDescription,
       heading: node.heading || undefined, hint: node.hint || undefined, "hint-showing": node.showingHint,
@@ -112,8 +132,15 @@ export function pageSource(scene, onNode, { raw = false } = {}) {
     const attributes = Object.entries(attrs).filter(([, value]) => value !== undefined && value !== null)
       .map(([key, value]) => key + '="' + xmlValue(value) + '"').join(" ");
     let nested = children.get(node.ref);
-    if (roleClass && description && nested &&
+    // Compose draws the artwork in a separate node over the same rectangle.
+    let readerNode = node;
+    if (!raw && node.imageItemTitle && name?.trim() && name.trim().toLowerCase() !== "image" &&
+        nested?.length === 1 && isArtworkPlaceholder(nested[0], node)) {
+      if (nested[0].reader?.important && !node.reader?.important) readerNode = nested[0];
+      nested = undefined;
+    } else if (!raw && !node.imageItemTitle && roleClass && description && nested &&
         !nested.some((child) => hasSeparateContent(child, description))) nested = undefined;
+    onNode?.(readerNode === node ? node : { ...node, readerRef: readerNode.ref });
     return nested ? "<node " + attributes + ">" + nested.map((child) => render(child, nextOwner)).join("") + "</node>"
       : "<node " + attributes + "/>";
   }

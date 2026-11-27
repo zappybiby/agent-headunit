@@ -87,13 +87,15 @@ function windowRoots(displayIds, permissionTitles) {
       const info = root.createAccessibilityNodeInfo();
       info.setQueryFromAppProcessEnabled(root, true);
       window.root = Java.retain(info);
+      try { window.icons = projectedIconResources(root); } catch (_) { /* The accessibility tree remains authoritative. */ }
     }
     result.push(window);
   }
   return result;
 }
 
-function readWindow(root, rect, target, includeScreenReader = false) {
+function readWindow(root, rect, target, icons, includeScreenReader = false) {
+  const NodeInfo = Java.use("android.view.accessibility.AccessibilityNodeInfo");
   const Action = Java.use("android.view.accessibility.AccessibilityNodeInfo$AccessibilityAction");
   const scrollUp = Action.ACTION_SCROLL_UP.value.getId();
   const scrollDown = Action.ACTION_SCROLL_DOWN.value.getId();
@@ -111,7 +113,8 @@ function readWindow(root, rect, target, includeScreenReader = false) {
     info.getBoundsInScreen(rect);
     if (info.isVisibleToUser() && !rect.isEmpty()) {
       const password = info.isPassword();
-      const sourceId = info.getSourceNodeId().toString();
+      const source = info.getSourceNodeId();
+      const sourceId = source.toString();
       const row = {
         parent, class: value(info.getClassName()), id: value(info.getViewIdResourceName()),
         // Android's node hash includes the accessibility window ID, which can change between reads.
@@ -127,6 +130,11 @@ function readWindow(root, rect, target, includeScreenReader = false) {
         selected: info.isSelected(), editable: info.isEditable(), clickable: info.isClickable(),
         longClickable: info.isLongClickable(), scrollable: info.isScrollable(), actions: info.getActions(),
       };
+      if (icons?.size && !password) {
+        const resource = icons.get(NodeInfo.getAccessibilityViewId(source))?.get(NodeInfo.getVirtualDescendantId(source));
+        if (typeof resource === "string") row.iconResource = resource;
+        else if (!resource?.ambiguous && resource?.titles?.size) row.imageTitles = resource.titles;
+      }
       const unnamedClick = (row.actions & 16) !== 0 && !row.text &&
         (!row.description || row.description.trim().toLowerCase() === "image");
       if (row.scrollable || unnamedClick) {
@@ -165,12 +173,14 @@ function readWindow(root, rect, target, includeScreenReader = false) {
       if (child) stack.push({info: child, parent});
     }
   }
+  attachControlIcons(rows);
   const children = rows.map(() => []);
   for (let i = rows.length - 1; i >= 0; i--) {
     const r = rows[i];
     r.guard = Checksum.compute("sha256", JSON.stringify([
       r.uniqueId, r.class, r.id, r.text, r.description, r.tooltip, r.clickLabel,
-      r.bounds, r.enabled, r.selected, r.checked, children[i],
+      r.bounds, r.enabled, r.selected, r.checked, children[i], ...(r.iconResource ? [r.iconResource] : []),
+      ...(r.imageItemTitle ? [r.imageItemTitle] : []),
     ]));
     if (r.parent >= 0) children[r.parent].push(r.guard);
   }
@@ -248,10 +258,10 @@ rpc.exports = {
         if (target) {
           const matches = visible.filter(w => w.root && w.display === target.display && w.windowId === target.windowId);
           if (matches.length !== 1) return { status: "guard-changed" };
-          return readWindow(matches[0].root, rect, target);
+          return readWindow(matches[0].root, rect, target, matches[0].icons);
         }
-        return visible.map(({root, modal, rows, ...identity}) => ({...identity,
-          rows: rows ?? readWindow(root, rect, null, includeScreenReader && identity.type !== undefined)}));
+        return visible.map(({root, modal, rows, icons, ...identity}) => ({...identity,
+          rows: rows ?? readWindow(root, rect, null, icons, includeScreenReader && identity.type !== undefined)}));
       } finally {
         for (const w of windows) w.root?.$dispose();
       }

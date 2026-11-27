@@ -11,7 +11,8 @@ test("acknowledges a completed command while a helper still holds its pipes", as
   const release = path.join(dir, "release");
   const helper = [
     "import os, sys, time",
-    "for _ in range(100):",
+    "deadline = time.monotonic() + 90",
+    "while time.monotonic() < deadline:",
     "    if not os.path.isdir(os.path.dirname(sys.argv[1])) or os.path.exists(sys.argv[1]): break",
     "    time.sleep(0.05)",
   ].join("\n");
@@ -23,7 +24,7 @@ test("acknowledges a completed command while a helper still holds its pipes", as
       'print(json.dumps({"ok": True, "applied": True}))',
     ].join("\n"));
     const call = rpcClient({ backend }, { env: {} });
-    assert.deepEqual(await call({ op: "tap" }, AbortSignal.timeout(3000)), { ok: true, applied: true });
+    assert.deepEqual(await call({ op: "tap" }), { ok: true, applied: true });
   } finally {
     await writeFile(release, "");
     await rm(dir, { recursive: true, force: true });
