@@ -1,0 +1,3 @@
+frida==17.27.6
+frida-tools==14.13.2
+Pillow==11.1.0

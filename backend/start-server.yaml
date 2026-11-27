@@ -1,0 +1,7 @@
+appId: com.google.android.projection.gearhead
+---
+- extendedWaitUntil:
+    visible: "More options"
+    timeout: 60000
+- tapOn: "More options"
+- tapOn: "Start head unit server"

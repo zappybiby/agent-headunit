@@ -1,0 +1,96 @@
+name: Build
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: callstack/agent-device
+          ref: e853b3b17b41f2fe8c299d13bcd9bb2dcb00594b
+          path: build/agent-device
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.13'
+          package-manager-cache: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Test provider and backend
+        run: |
+          python -m pip install -r backend/requirements.txt
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -B -m unittest discover
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          node --test "provider/*.test.mjs"
+      - name: Build the compatible Agent Device CLI
+        working-directory: build/agent-device
+        shell: bash
+        run: |
+          git apply ../../upstream/agent-device.patch
+          npm pkg set version=0.21.43
+          npm install --global pnpm@11.17.0
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Package the Windows release
+        run: |
+          & "$env:ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager.bat" "platforms;android-36" "build-tools;36.0.0"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -B scripts/pack_compat.py build/agent-device dist
+      - name: Install and check the release
+        run: |
+          Expand-Archive dist/agent-headunit-windows-x64.zip build/smoke
+          python build/smoke/setup.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          node --input-type=module -e "import {loadUpstreamRuntime} from './build/smoke/.runtime/node_modules/agent-headunit/upstream-runtime.mjs'; await loadUpstreamRuntime(process.cwd() + '/build/smoke/.runtime/node_modules/agent-device');"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          build/smoke/agent-headunit.cmd connect headunit --platform android
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          build/smoke/agent-headunit.cmd disconnect
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          build/smoke/agent-headunit.cmd daemon stop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-headunit
+          path: dist/*
+          if-no-files-found: error
+          compression-level: 0
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: agent-headunit
+          path: dist
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          test "$TAG" = "v$(node -p "require('./provider/package.json').version")"
+          gh release create "$TAG" dist/* --verify-tag --title "$TAG" --notes "Download agent-headunit-windows-x64.zip and follow the Windows quick start in the README."
