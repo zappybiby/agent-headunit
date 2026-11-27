@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { directRuntime, projectionId } from "../provider/provider-runtime.mjs";
+import { upstreamVersion } from "../provider/upstream-runtime.mjs";
 
 test("timed gesture capabilities follow the selected projection's staged touch helper", async () => {
   const device = { id: projectionId("emulator-5554", "emulator-5556"), platform: "android", target: "mobile", kind: "emulator" };
@@ -159,7 +160,7 @@ test("recording runs on the receiver and preserves the projection ownership on r
   };
 
   const { platformModule, runtime: providerRuntime } = await directRuntime({}, {
-    clientVersion: "0.21.43", env: { HEADUNIT_FRIDA_SESSION: "fixture" },
+    clientVersion: upstreamVersion, env: { HEADUNIT_FRIDA_SESSION: "fixture" },
     createError: (code, message, details) => Object.assign(new Error(message), { code, details }),
   }, sdk, async (request) => {
     keyboard.push(request);

@@ -3,6 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 import os
+from pathlib import Path
 import re
 import shutil
 import shlex
@@ -14,6 +15,13 @@ from accessibility import accessible_windows, match_window_roots, render_panels
 from native_nodes import window_nodes
 from projection import GEARHEAD, TOUCH_IME, car_bounds, projection_displays, resolve_visible_panels
 from window_tree import HierarchyError, decode_window
+
+
+# The Windows SDK installer does not put its tools on PATH.
+if os.name == "nt":
+    sdk = Path(os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT") or
+               Path(os.environ.get("LOCALAPPDATA", Path.home())) / "Android/Sdk")
+    os.environ["PATH"] = os.pathsep.join((os.environ.get("PATH", ""), str(sdk / "platform-tools"), str(sdk / "emulator")))
 
 
 class HeadunitError(RuntimeError):

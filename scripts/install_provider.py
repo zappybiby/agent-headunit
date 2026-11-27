@@ -23,7 +23,9 @@ def package_files():
     files = {
         "package.json": (provider / "package.json").read_bytes(),
         "LICENSE": (SOURCE / "LICENSE").read_bytes(),
+        "README.md": (SOURCE / "README.md").read_bytes(),
         "install_provider.py": INSTALLER.read_bytes(),
+        "windows/setup.py": (SOURCE / "windows/setup.py").read_bytes(),
     }
     for pattern in ("*.mjs", "cli/*.mjs"):
         for path in sorted(provider.glob(pattern)):

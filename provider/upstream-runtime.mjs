@@ -3,7 +3,9 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const version = '0.21.43';
+import manifest from './package.json' with { type: 'json' };
+
+export const upstreamVersion = manifest.devDependencies['agent-device'];
 
 function packageRootFromEntry(entry) {
   const directory = path.dirname(entry);
@@ -37,7 +39,7 @@ export async function findUpstreamRuntimeRoot() {
     const manifest = await ifPresent(() => readFile(path.join(root, 'package.json'), 'utf8'));
     if (!manifest) continue;
     const info = JSON.parse(manifest);
-    if (info.name === 'agent-device' && info.version === version) return await realpath(root);
+    if (info.name === 'agent-device') return await realpath(root);
     return;
   }
 }
@@ -77,7 +79,7 @@ export async function loadUpstreamRuntime(root, host) {
     scrollKeyboardOccludesSurfaceError, buildGesturePlan, scopeSnapshotNodes, createHostAudioProbeCaptureOperations,
     resolveManagedProcessIdentity, inspectManagedProcess, terminateManagedProcessSet]
     .some((value) => typeof value !== 'function')) {
-    throw new Error(`The agent-device ${version} installation has unexpected runtime exports.`);
+    throw new Error(`This Agent Device installation has incompatible runtime exports. Tested with ${upstreamVersion}.`);
   }
   return Object.freeze({ createCloudWebDriverRuntime, createAndroidPlatformRuntime, deviceIdentity, runTreeAlertAction,
     parseWebDriverAndroidSnapshotNodes, acquireProviderKeyboard, attachScreenReaderOrder, attachReaderFacts,

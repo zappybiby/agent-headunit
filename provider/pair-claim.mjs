@@ -3,6 +3,7 @@ import { mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { upstreamVersion } from './upstream-runtime.mjs';
 
 async function releaseClaims(releases) {
   const results = await Promise.allSettled(releases.map((claim) => claim.release()));
@@ -27,12 +28,11 @@ export async function claimProjectionTargets(targets, {
     throw new Error('An Open Headunit claim needs distinct device identities.');
   }
 
-  // These exports belong to the executing agent-device 0.21.43 package.
   const chunk = (name) => import(pathToFileURL(path.join(upstreamRoot, 'dist', 'src', name)).href);
   const [{ i: acquireProcessLock }, { m: readCurrentOwnerIdentity }] =
     await Promise.all([chunk('file.js'), chunk('sdk-io.js')]);
   if (typeof acquireProcessLock !== 'function' || typeof readCurrentOwnerIdentity !== 'function') {
-    throw new Error('The agent-device 0.21.43 installation has unexpected process lock exports.');
+    throw new Error(`This Agent Device installation has incompatible process lock exports. Tested with ${upstreamVersion}.`);
   }
 
   const { pid, startTime } = await readCurrentOwnerIdentity();

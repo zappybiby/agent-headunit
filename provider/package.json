@@ -11,11 +11,23 @@
     "./http-auth": "./http-auth.mjs"
   },
   "bin": {
+    "agent-headunit": "./cli/headunit.mjs",
     "install-headunit-provider": "./cli/install.mjs",
     "open-headunit-session": "./cli/session.mjs",
     "open-headunit-contact-sheet": "./cli/contact-sheet.mjs",
     "open-headunit-artifacts": "./cli/artifacts.mjs"
   },
-  "engines": { "node": ">=22.12" },
-  "files": ["*.mjs", "cli", "install_provider.py", "backend"]
+  "engines": {
+    "node": ">=22.12"
+  },
+  "files": [
+    "*.mjs",
+    "cli",
+    "install_provider.py",
+    "windows",
+    "backend"
+  ],
+  "devDependencies": {
+    "agent-device": "0.21.44"
+  }
 }

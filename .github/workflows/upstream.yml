@@ -1,0 +1,70 @@
+name: Check upstream Agent Device
+on:
+  schedule:
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency: upstream-agent-device
+
+jobs:
+  latest:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - id: check
+        name: Find a newer stable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current=$(node -p "require('./provider/package.json').devDependencies['agent-device']")
+          latest=$(npm view agent-device@latest version)
+          [[ "$latest" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          echo "Tested: $current. Latest: $latest." >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$current" == "$latest" || "$(printf '%s\n' "$current" "$latest" | sort -V | tail -1)" != "$latest" ]]; then exit 0; fi
+          branch="update/agent-device-$latest"
+          pr=$(gh pr list --state all --base main --head "$branch" --json number --jq 'length')
+          if [[ "$pr" == 0 ]]; then echo "version=$latest" >> "$GITHUB_OUTPUT"; fi
+
+  test:
+    needs: latest
+    if: needs.latest.outputs.version != ''
+    uses: ./.github/workflows/packages.yml
+    with:
+      agent-device: ${{ needs.latest.outputs.version }}
+
+  propose:
+    needs: [latest, test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Open a draft for the tested version
+        env:
+          VERSION: ${{ needs.latest.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="update/agent-device-$VERSION"
+          if git ls-remote --exit-code --heads origin "$branch"; then
+            git fetch origin "refs/heads/$branch:refs/remotes/origin/$branch"
+            git switch --track "origin/$branch"
+            test "$(node -p "require('./provider/package.json').devDependencies['agent-device']")" = "$VERSION"
+          else
+            git switch -c "$branch"
+            npm pkg set "devDependencies.agent-device=$VERSION" --prefix provider
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add provider/package.json
+            git commit -m "Test against Agent Device $VERSION"
+            git push origin "$branch"
+          fi
+          touch "$RUNNER_TEMP/pr-body"
+          gh pr create --base main --head "$branch" --draft --title "Test against Agent Device $VERSION" --body-file "$RUNNER_TEMP/pr-body"

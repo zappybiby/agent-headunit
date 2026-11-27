@@ -1,0 +1,88 @@
+name: Windows packages
+on:
+  workflow_call:
+    inputs:
+      agent-device:
+        description: Agent Device version to check in place of the tested version
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install stock Agent Device
+        id: stock
+        env:
+          CANDIDATE: ${{ inputs.agent-device }}
+        run: |
+          $version = (Get-Content provider/package.json -Raw | ConvertFrom-Json).devDependencies.'agent-device'
+          if ($env:CANDIDATE) { $version = $env:CANDIDATE }
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid Agent Device version.' }
+          npm install --global "agent-device@$version"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          if ((agent-device --version) -ne $version) { throw "Expected Agent Device $version." }
+          "version=$version" >> $env:GITHUB_OUTPUT
+      - name: Test provider and backend
+        run: |
+          python -m pip install -r backend/requirements.txt
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -B -m unittest discover
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          node --test "tests/*.test.mjs"
+      - name: Build provider
+        run: |
+          & "$env:ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager.bat" "platforms;android-36" "build-tools;36.0.0"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -B scripts/install_provider.py --pack dist
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $files = tar -tf (Get-ChildItem dist/*.tgz -File).FullName
+          if ($LASTEXITCODE -or ($files -match '(^|/)(node_modules|agent-device)(/|$)|\.tgz$')) { throw 'Unexpected dependency in the provider archive.' }
+      - name: Install the provider from an Android project
+        env:
+          STOCK_VERSION: ${{ steps.stock.outputs.version }}
+        run: |
+          $archive = (Get-ChildItem dist/*.tgz -File).FullName
+          $cli = (Get-Command agent-device.cmd).Source
+          npm install --global $archive
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          if ((Get-Command agent-device.cmd).Source -ne $cli) { throw 'The Agent Device command changed.' }
+          if ((agent-device --version) -ne $env:STOCK_VERSION) { throw 'The Agent Device version changed.' }
+          $env:AGENT_DEVICE_HOME = "$env:RUNNER_TEMP/headunit-home"
+          $env:AGENT_DEVICE_STATE_DIR = "$env:RUNNER_TEMP/headunit-state"
+          $env:AGENT_DEVICE_SESSION = 'ci'
+          $env:HEADUNIT_PYTHON = (Get-Command python).Source
+          $modules = (npm root --global)
+          node --input-type=module -e "import {loadUpstreamRuntime} from './provider/upstream-runtime.mjs'; await loadUpstreamRuntime(process.argv[1]);" "$modules/agent-device"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Set-Location (New-Item -ItemType Directory -Path "$env:RUNNER_TEMP/android-project")
+          agent-headunit setup --data-dir "$env:RUNNER_TEMP/headunit-data"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          agent-device connect headunit --platform android
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          agent-device disconnect
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          agent-device daemon stop
+      - uses: actions/upload-artifact@v4
+        if: inputs.agent-device == ''
+        with:
+          name: agent-headunit
+          path: dist/agent-headunit-*.tgz
+          if-no-files-found: error

@@ -2,7 +2,7 @@ import path from "node:path";
 import { rpcClient, sessionRpcClient } from "./rpc.mjs";
 import { startDriver } from "./driver.mjs";
 import { directRuntime, projectionId } from "./provider-runtime.mjs";
-import { findUpstreamRuntimeRoot, loadUpstreamRuntime } from "./upstream-runtime.mjs";
+import { findUpstreamRuntimeRoot, loadUpstreamRuntime, upstreamVersion } from "./upstream-runtime.mjs";
 import { claimProjectionPair } from "./pair-claim.mjs";
 import { metroPorts } from "./metro-runtime.mjs";
 import { createPairLifecycle, supportsPairLifecycle } from "./pair-lifecycle.mjs";
@@ -128,11 +128,10 @@ export default function headunit(options = {}) {
       const held = new Set();
       const emulatorIds = new Set();
       const transports = new Map();
-      const upstream = upstreamRoot && host.clientVersion === "0.21.43"
-        ? await loadUpstreamRuntime(upstreamRoot, host) : undefined;
+      const upstream = upstreamRoot ? await loadUpstreamRuntime(upstreamRoot, host) : undefined;
       const config = managedOptions(options, host);
       if (config && !upstream) {
-        throw host.createError("UNSUPPORTED_OPERATION", "Starting a configured Open Headunit pair requires agent-device 0.21.43.");
+        throw host.createError("UNSUPPORTED_OPERATION", `This Agent Device installation cannot start the emulator pair. Tested with ${upstreamVersion}.`);
       }
       let startingOrRunning = false;
       const legacyTouch = projectedTouchHelper(host.env.HEADUNIT_TOUCH_DEVICE_JAR, host.env.HEADUNIT_TOUCH_ROOT);
